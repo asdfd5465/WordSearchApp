@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<full-backup-content>
-    <!-- TODO: Add <include> and <exclude> rules here to NARROW what is backed up.
-    <exclude domain="database" path="myDb.db"/>
-    <exclude domain="sharedpref" path="app_session_state.xml"/>
-    -->
-</full-backup-content>
