@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Word Search</string>
+    <string name="hint_enter_word">Enter a word</string>
+    <string name="button_search">Go</string>
+    <string name="error_fetching_meaning">Could not fetch meaning. Check connection or word.</string>
+    <string name="error_no_word">Please enter a word.</string>
+    <string name="no_definition_found">No definition found for this word.</string>
+</resources>
