@@ -42,6 +42,7 @@ android {
     }
     kotlinOptions {
         jvmTarget = "1.8" // Or "17"
+        allWarningsAsErrors = false
     }
     buildFeatures {
         compose = true // Assuming you still want Jetpack Compose
@@ -50,7 +51,7 @@ android {
         // For Kotlin 1.9.23, this is the compatible Compose Compiler version
         kotlinCompilerExtensionVersion = "1.5.10"
     }
-    packagingOptions {
+    packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
