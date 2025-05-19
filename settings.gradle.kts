@@ -1,4 +1,3 @@
-// WordFinderApp/settings.gradle.kts
 pluginManagement {
     repositories {
         google()
@@ -14,5 +13,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "WordFinderApp"
+rootProject.name = "WordSearchApp"
 include(":app")
