@@ -37,3 +37,7 @@ Note: for keeping repo files intact and fetch them in codesapce:
 git fetch origin
 git reset --hard origin/main
 git clean -fdx
+Note: To build 
+chmod +x gradlew
+./gradlew clean
+./gradlew assembleDebug
