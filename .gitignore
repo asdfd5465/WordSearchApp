@@ -1,57 +1,53 @@
-# Built application files
-*.apk
-*.aab
-*.ap_
-
-# Files for the Dalvik VM
-*.dex
-
-# Java class files
-*.class
-
-# Generated files
-bin/
-gen/
-out/
-
-# Gradle files
-.gradle/
-build/
-
-# Local configuration files (IDE-specific)
-.idea/
-.idea/caches/
-.idea/libraries/
-.idea/modules.xml
-.idea/workspace.xml
-.idea/navEditor.xml
-.idea/assetWizardSettings.xml
-local.properties
+# Android Studio
 *.iml
-*.ipr
-*.iws
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
 
-# Keystore files
+# Kotlin
+/build/
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# Keystore file
 *.jks
 *.keystore
 
-# External native build folder generated in Android Studio 2.2 and later
-.externalNativeBuild/
-
-# Google Services (e.g., Firebase)
+# Google Services
 google-services.json
 
-# Crashlytics plugin
-com_crashlytics_export_strings.xml
-crashlytics.properties
-crashlytics-build.properties
-fabric.properties
+# Local configuration file (sdk path, etc)
+local.properties
 
-# Caches
-.kotlin/
-captures/
-output/
+# IntelliJ
+*.ipr
+*.iws
 
-# Misc
+# Eclipse
+.classpath
+.project
+.settings/
+
+# Mac
 .DS_Store
-Thumbs.db
+
+# Log files
+*.log
+
+# Android Studio Profiling data
+*.hprof
+*.snapshot
