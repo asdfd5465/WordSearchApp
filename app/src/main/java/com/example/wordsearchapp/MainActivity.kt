@@ -22,23 +22,23 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        wordEditText = findViewById(R.id.wordEditText)
-        searchButton = findViewById(R.id.searchButton)
+        //wordEditText = findViewById(R.id.wordEditText) > Line 25 to 41 commented
+        //searchButton = findViewById(R.id.searchButton)
         meaningTextView = findViewById(R.id.meaningTextView)
 
-        searchButton.setOnClickListener {
-            performSearch()
-        }
+        //searchButton.setOnClickListener {
+          //  performSearch()
+        //}
 
-        wordEditText.setOnEditorActionListener { _, actionId, _ ->
-            if (actionId == EditorInfo.IME_ACTION_SEARCH) {
-                performSearch()
-                true
-            } else {
-                false
-            }
-        }
-    }
+        //wordEditText.setOnEditorActionListener { _, actionId, _ ->
+          //  if (actionId == EditorInfo.IME_ACTION_SEARCH) {
+            //    performSearch()
+              //  true
+            //} else {
+              //  false
+            //}
+        //}
+    //}
 
     private fun performSearch() {
         val word = wordEditText.text.toString().trim()
