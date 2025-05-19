@@ -33,3 +33,7 @@ Command-line Tools: 19.0 (Excellent)
 Build-Tools: 34.0.0
 Platform-Tools: 35.0.2
 Platforms: android-34
+Note: for keeping repo files intact and fetch them in codesapce:
+git fetch origin
+git reset --hard origin/main
+git clean -fdx
