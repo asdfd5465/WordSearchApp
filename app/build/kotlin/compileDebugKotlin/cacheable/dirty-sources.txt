@@ -1,0 +1,13 @@
+/workspaces/d/app/src/main/java/dict/nick/navigation/AppNavigation.kt
+/workspaces/d/app/src/main/java/dict/nick/DictionaryApp.kt
+/workspaces/d/app/src/main/java/dict/nick/ui/theme/Color.kt
+/workspaces/d/app/src/main/java/dict/nick/ui/screens/WordDetailScreen.kt
+/workspaces/d/app/src/main/java/dict/nick/data/model/DictionaryModels.kt
+/workspaces/d/app/src/main/java/dict/nick/MainActivity.kt
+/workspaces/d/app/src/main/java/dict/nick/data/repository/DictionaryRepository.kt
+/workspaces/d/app/src/main/java/dict/nick/ui/theme/Theme.kt
+/workspaces/d/app/src/main/java/dict/nick/ui/viewmodel/ThemeViewModel.kt
+/workspaces/d/app/src/main/java/dict/nick/utils/ContextExtensions.kt
+/workspaces/d/app/src/main/java/dict/nick/ui/viewmodel/DictionaryViewModel.kt
+/workspaces/d/app/src/main/java/dict/nick/ui/theme/Type.kt
+/workspaces/d/app/src/main/java/dict/nick/ui/screens/HomeScreen.kt

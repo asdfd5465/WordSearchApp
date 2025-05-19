@@ -1,0 +1,15 @@
+* text=auto eol=lf
+
+*.sh        eol=lf
+*.bash      eol=lf
+gradlew     eol=lf
+
+*.bat       eol=crlf
+*.cmd       eol=crlf
+
+# Denote all files that are truly binary and should not be modified.
+*.jar binary
+*.png binary
+*.jpg binary
+*.gif binary
+# Add other binary types as needed
