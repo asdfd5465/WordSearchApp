@@ -22,3 +22,14 @@ WordSearchApp/
 ├── settings.gradle.kts
 ├── gradlew
 └── gradlew.bat
+
+JDK: 17
+Kotlin (standalone): 1.9.22
+Gradle: 8.4 (via wrapper)
+Android Gradle Plugin (AGP): Version to be set in build.gradle.kts (target 8.3.x)
+Android SDK:
+Root: /workspaces/android-sdk (with ANDROID_HOME set)
+Command-line Tools: 19.0 (Excellent)
+Build-Tools: 34.0.0
+Platform-Tools: 35.0.2
+Platforms: android-34
