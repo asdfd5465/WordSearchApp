@@ -2,5 +2,12 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-    <!-- Add more if needed by your theme -->
+
+    <!-- Your App Specific Colors -->
+    <color name="app_accent_color">#FF5733</color> <!-- Your requested color -->
+    <color name="app_background">#1C1C1E</color> <!-- Dark background, adjust if needed -->
+    <color name="card_background">#2C2C2E</color> <!-- Slightly lighter for cards -->
+    <color name="text_primary_dark">#E1E1E1</color> <!-- Main text on dark -->
+    <color name="text_secondary_dark">#A0A0A0</color> <!-- Subtler text on dark -->
+    <color name="text_on_accent">#FFFFFFFF</color> <!-- Text for on your accent color button -->
 </resources>
