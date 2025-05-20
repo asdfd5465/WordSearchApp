@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:color="@color/app_accent_color" android:state_focused="true"/>
+    <item android:color="@color/app_accent_color" android:state_hovered="true"/>
+    <item android:color="@color/app_accent_color"/> <!-- Default unfocused color, always accent -->
+    <!-- Or use input_box_stroke_unfocused for a different unfocused color:
+    <item android:color="@color/input_box_stroke_unfocused"/>
+    -->
+</selector>
