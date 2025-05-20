@@ -52,7 +52,7 @@ class MainActivity : AppCompatActivity() {
         val word = wordEditText.text.toString().trim()
         Log.d(TAG, "performSearch called with word: '$word'")
 
-        // Hide keyboard and clear focus
+        // Hide keyboard and clear focus (THIS CALL REMAINS)
         hideKeyboardAndClearFocus()
 
         if (word.isEmpty()) {
@@ -72,8 +72,6 @@ class MainActivity : AppCompatActivity() {
             val result = dictionaryApiService.getMeaning(word)
             Log.d(TAG, "API call finished, result success: ${result.isSuccess}")
 
-            // Only update UI if the Activity is at least in STARTED state (visible)
-            // Using RESUMED is even safer for UI updates that should only happen when fully interactive.
             if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
                 result.fold(
                     onSuccess = { entries ->
@@ -118,49 +116,55 @@ class MainActivity : AppCompatActivity() {
         val inputMethodManager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
         var focusedView = currentFocus
         if (focusedView == null) {
-            // If no view has focus, decor view might be the one to use token from
             focusedView = window.decorView
         }
         focusedView?.let {
             inputMethodManager.hideSoftInputFromWindow(it.windowToken, 0)
-            it.clearFocus() // Clear focus from the currently focused view
+            it.clearFocus()
              Log.d(TAG, "Keyboard hidden and focus cleared for view: $it")
         } ?: run {
             Log.d(TAG, "No view currently has focus to hide keyboard from or clear.")
         }
-        // Additionally, specifically try to clear focus from wordEditText if it's not the current focus
-        // but might still hold some state.
         if (::wordEditText.isInitialized && wordEditText != focusedView) {
             wordEditText.clearFocus()
         }
     }
 
     override fun onStart() {
+        val startTime = System.currentTimeMillis() // For profiling
         super.onStart()
         Log.d(TAG, "onStart called")
+        Log.d(TAG, "onStart finished in ${System.currentTimeMillis() - startTime}ms") // For profiling
     }
 
     override fun onResume() {
+        val startTime = System.currentTimeMillis() // For profiling
         super.onResume()
         Log.d(TAG, "onResume called")
+        Log.d(TAG, "onResume finished in ${System.currentTimeMillis() - startTime}ms") // For profiling
     }
 
     override fun onPause() {
+        val startTime = System.currentTimeMillis() // For profiling
         super.onPause()
         Log.d(TAG, "onPause called")
-        // It's good practice to also try to hide keyboard here if activity is losing focus
-        // hideKeyboardAndClearFocus() // Consider if this causes issues with quick app switching
+        // hideKeyboardAndClearFocus() // Still commented out as per previous discussion if it causes issues
+        Log.d(TAG, "onPause finished in ${System.currentTimeMillis() - startTime}ms") // For profiling
     }
 
     override fun onStop() {
+        val startTime = System.currentTimeMillis() // For profiling
         super.onStop()
-        Log.d(TAG, "onStop called - attempting to hide keyboard and clear focus")
-        // This is a crucial place to ensure resources are released
-        hideKeyboardAndClearFocus()
+        Log.d(TAG, "onStop called") // Log still present
+        // hideKeyboardAndClearFocus() // << MODIFICATION: Temporarily commented out for this test
+        Log.d(TAG, "onStop (hideKeyboardAndClearFocus was commented out for this test)") // Clarify in logs
+        Log.d(TAG, "onStop finished in ${System.currentTimeMillis() - startTime}ms") // For profiling
     }
 
     override fun onDestroy() {
+        val startTime = System.currentTimeMillis() // For profiling
         super.onDestroy()
         Log.d(TAG, "onDestroy called")
+        Log.d(TAG, "onDestroy finished in ${System.currentTimeMillis() - startTime}ms") // For profiling
     }
 }
