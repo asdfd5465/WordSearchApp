@@ -1,9 +1,73 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Base application theme. -->
-    <style name="Base.Theme.WordSearchApp" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+    <style name="Base.Theme.WordSearchApp" parent="Theme.Material3.Dark.NoActionBar"> <!-- Changed to Material3.Dark -->
+        <!-- Primary brand color. -->
+        <item name="colorPrimary">@color/app_accent_color</item>
+        <item name="colorOnPrimary">@color/text_on_accent</item>
+        <!-- Secondary brand color. -->
+        <item name="colorSecondary">@color/app_accent_color</item> <!-- Can be same or different -->
+        <item name="colorOnSecondary">@color/text_on_accent</item>
+        <!-- Status bar color. -->
+        <item name="android:statusBarColor">@color/app_background</item>
+        <!-- Background color -->
+        <item name="android:windowBackground">@color/app_background</item>
+        <item name="android:textColor">@color/text_primary_dark</item>
+        <!-- Customize your theme here. -->
+        <item name="textInputStyle">@style/Widget.App.TextInputLayout</item>
+        <item name="editTextStyle">@style/Widget.App.AutoCompleteTextView</item>
+        <item name="buttonStyle">@style/Widget.App.Button</item>
     </style>
 
     <style name="Theme.WordSearchApp" parent="Base.Theme.WordSearchApp" />
+
+    <!-- Widget Styles -->
+    <style name="Widget.App.Button" parent="Widget.Material3.Button">
+        <item name="android:backgroundTint">@color/app_accent_color</item>
+        <item name="android:textColor">@color/text_on_accent</item>
+        <item name="android:paddingStart">24dp</item>
+        <item name="android:paddingEnd">24dp</item>
+        <item name="shapeAppearanceOverlay">@style/ShapeAppearance.App.SmallComponent</item>
+    </style>
+
+    <style name="ShapeAppearance.App.SmallComponent" parent="ShapeAppearance.Material3.SmallComponent">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">8dp</item> <!-- Adjust corner radius -->
+    </style>
+
+    <!-- Style for AutoCompleteTextView if wrapped in TextInputLayout -->
+    <style name="Widget.App.TextInputLayout" parent="Widget.Material3.TextInputLayout.OutlinedBox">
+        <item name="boxStrokeColor">@color/app_accent_color</item> <!-- Focused border color -->
+        <item name="hintTextColor">@color/app_accent_color</item>
+    </style>
+
+    <!-- Style for the AutoCompleteTextView itself -->
+    <style name="Widget.App.AutoCompleteTextView" parent="Widget.Material3.AutoCompleteTextView.OutlinedBox">
+        <item name="android:textColor">@color/text_primary_dark</item>
+        <item name="android:textColorHint">@color/text_secondary_dark</item>
+    </style>
+
+    <!-- Text Appearance Styles -->
+    <style name="TextAppearance.App.PartOfSpeech" parent="TextAppearance.Material3.LabelLarge">
+        <item name="android:textColor">@color/app_accent_color</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="TextAppearance.App.Definition" parent="TextAppearance.Material3.BodyLarge">
+        <item name="android:textColor">@color/text_primary_dark</item>
+        <item name="android:lineSpacingMultiplier">1.2</item>
+    </style>
+
+    <style name="TextAppearance.App.Label" parent="TextAppearance.Material3.LabelMedium">
+        <item name="android:textColor">@color/text_secondary_dark</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="TextAppearance.App.ExampleItem" parent="TextAppearance.Material3.BodyMedium">
+        <item name="android:textColor">@color/text_primary_dark</item>
+    </style>
+
+    <style name="TextAppearance.App.MetaItem" parent="TextAppearance.Material3.BodyMedium">
+        <item name="android:textColor">@color/text_primary_dark</item>
+    </style>
+
 </resources>
