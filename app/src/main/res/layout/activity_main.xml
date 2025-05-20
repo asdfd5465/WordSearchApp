@@ -1,20 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout 
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:paddingStart="16dp"
     android:paddingEnd="16dp"
-    android:paddingTop="24dp" <!-- More top padding for status bar area -->
+    android:paddingTop="24dp"
     android:paddingBottom="8dp"
     tools:context=".MainActivity">
+
+    <!-- More top padding for status bar area -->
 
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/wordInputLayout"
         style="@style/Widget.App.TextInputLayout"
         android:layout_width="0dp"
-        android:layout_height="wrap_content" <!-- Let it wrap_content -->
+        android:layout_height="wrap_content"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/searchButtonGuideline"
@@ -29,7 +32,6 @@
             android:inputType="text"
             android:imeOptions="actionSearch"
             android:completionThreshold="1"/>
-
     </com.google.android.material.textfield.TextInputLayout>
 
     <!-- Guideline to help position the button nicely -->
@@ -38,21 +40,20 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        app:layout_constraintGuide_end="90dp"/> <!-- Adjust this value as needed -->
-
+        app:layout_constraintGuide_end="90dp"/>
+        <!-- Adjust this value as needed -->
 
     <Button
         android:id="@+id/searchButton"
         style="@style/Widget.App.Button"
         android:layout_width="wrap_content"
-        android:layout_height="0dp" <!-- Make height match input field -->
+        android:layout_height="0dp"
         android:text="@string/button_search"
         app:layout_constraintTop_toTopOf="@+id/wordInputLayout"
         app:layout_constraintBottom_toBottomOf="@+id/wordInputLayout"
         app:layout_constraintStart_toEndOf="@id/wordInputLayout"
         app:layout_constraintEnd_toEndOf="parent"
         android:layout_marginStart="8dp"/>
-
 
     <ScrollView
         android:id="@+id/resultsScrollView"
@@ -66,7 +67,9 @@
         app:layout_constraintBottom_toTopOf="@+id/footerTextView"
         android:scrollbars="vertical"
         android:clipToPadding="false"
-        android:paddingBottom="16dp"> <!-- Padding at bottom of scrollable content inside ScrollView -->
+        android:paddingBottom="16dp">
+
+        <!-- Padding at bottom of scrollable content inside ScrollView -->
 
         <LinearLayout
             android:id="@+id/definitionsContainer"
