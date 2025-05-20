@@ -1,4 +1,4 @@
-package com.example.wordsearchapp // Use your actual package name
+package com.example.wordsearchapp // Or your new package name: com.newcompany.newapp
 
 import android.content.Context
 import android.os.Bundle
@@ -10,31 +10,29 @@ import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.ArrayAdapter
-// import android.widget.AutoCompleteTextView // Now using MaterialAutoCompleteTextView
+// import android.widget.AutoCompleteTextView // Still commented out, which is fine
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.isVisible
+// import androidx.core.view.isVisible // This import was present in your pasted code, but not used. Keep if needed elsewhere, or remove.
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
-import com.google.android.material.textfield.MaterialAutoCompleteTextView // Import Material version
+import com.google.android.material.textfield.MaterialAutoCompleteTextView // Keep this one
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import com.google.android.material.textfield.MaterialAutoCompleteTextView 
+// REMOVE: import com.google.android.material.textfield.MaterialAutoCompleteTextView (this was the duplicate)
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var wordAutoCompleteTextView: MaterialAutoCompleteTextView // Changed type
+    private lateinit var wordAutoCompleteTextView: MaterialAutoCompleteTextView
     private lateinit var searchButton: Button
-    // private lateinit var meaningTextView: TextView // Replaced by definitionsContainer
     private lateinit var definitionsContainer: LinearLayout
     private lateinit var resultsScrollView: ScrollView
     private lateinit var noResultsTextView: TextView
-
 
     private lateinit var dbHelper: DatabaseHelper
     private lateinit var suggestionsAdapter: ArrayAdapter<String>
@@ -43,18 +41,21 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setTheme(R.style.Theme_WordSearchApp) // Apply theme programmatically if needed, or rely on Manifest
+        // Ensure your package name is correct here if you changed it.
+        // If MainActivity is in com.newcompany.newapp, then R should be found.
+        // If MainActivity is still in com.example.wordsearchapp BUT your namespace in build.gradle
+        // is com.newcompany.newapp, you'd need to import com.newcompany.newapp.R
+        setTheme(R.style.Theme_WordSearchApp) 
         setContentView(R.layout.activity_main)
         Log.d(TAG, "onCreate called")
 
         dbHelper = DatabaseHelper(this)
 
-        wordAutoCompleteTextView = findViewById(R.id.wordEditText) // ID from TextInputLayout's child
+        wordAutoCompleteTextView = findViewById(R.id.wordEditText)
         searchButton = findViewById(R.id.searchButton)
         definitionsContainer = findViewById(R.id.definitionsContainer)
         resultsScrollView = findViewById(R.id.resultsScrollView)
         noResultsTextView = findViewById(R.id.noResultsTextView)
-
 
         setupAutoComplete()
 
@@ -77,7 +78,7 @@ class MainActivity : AppCompatActivity() {
         wordAutoCompleteTextView.setOnItemClickListener { parent, _, position, _ ->
             val selectedWord = parent.getItemAtPosition(position) as String
             Log.d(TAG, "Suggestion selected: $selectedWord")
-            wordAutoCompleteTextView.setText(selectedWord, false) // Set text without filtering
+            wordAutoCompleteTextView.setText(selectedWord, false)
             performSearch(selectedWord)
         }
     }
@@ -100,7 +101,7 @@ class MainActivity : AppCompatActivity() {
                         }
                         suggestionsAdapter.clear()
                         suggestionsAdapter.addAll(suggestions)
-                        suggestionsAdapter.filter.filter(null) 
+                        suggestionsAdapter.filter.filter(null)
                         Log.d(TAG, "Fetched suggestions for '$query': $suggestions")
                     }
                 } else {
@@ -110,7 +111,6 @@ class MainActivity : AppCompatActivity() {
             }
         })
     }
-
 
     private fun performSearch(wordToSearch: String) {
         val word = wordToSearch.trim()
@@ -122,20 +122,15 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        // Clear previous results and show "searching" state (or a ProgressBar)
         definitionsContainer.removeAllViews()
         noResultsTextView.visibility = View.GONE
-        // You could show a ProgressBar here
-        // meaningTextView.text = "Searching..." // No longer have a single meaningTextView
-
+        
         lifecycleScope.launch {
             Log.d(TAG, "Coroutine launched for DB query for '$word'")
             val wordEntryResult = withContext(Dispatchers.IO) {
                 dbHelper.getWordDefinition(word)
             }
             Log.d(TAG, "DB query finished for '$word', result found: ${wordEntryResult != null}")
-
-            // Hide ProgressBar here
 
             if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
                 if (wordEntryResult != null && wordEntryResult.definitions != null && wordEntryResult.definitions.isNotEmpty()) {
@@ -144,7 +139,7 @@ class MainActivity : AppCompatActivity() {
                     noResultsTextView.visibility = View.GONE
                     Log.d(TAG, "Successfully displayed meaning for '$word' from DB")
                 } else {
-                    definitionsContainer.removeAllViews() // Clear if any old views (e.g. "Searching...")
+                    definitionsContainer.removeAllViews()
                     resultsScrollView.visibility = View.GONE
                     noResultsTextView.visibility = View.VISIBLE
                     Log.d(TAG, "No definition found for '$word' in DB")
@@ -156,7 +151,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun displayDefinitions(definitions: List<DefinitionDetail>) {
-        definitionsContainer.removeAllViews() // Clear previous results first
+        definitionsContainer.removeAllViews()
         val inflater = LayoutInflater.from(this)
 
         for (defDetail in definitions) {
@@ -198,7 +193,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-
     private fun hideKeyboardAndClearFocus() {
         Log.d(TAG, "Attempting to hide keyboard and clear focus")
         val inputMethodManager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
@@ -218,7 +212,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // Lifecycle methods remain the same
     override fun onStart() { super.onStart(); Log.d(TAG, "onStart called") }
     override fun onResume() { super.onResume(); Log.d(TAG, "onResume called") }
     override fun onPause() { super.onPause(); Log.d(TAG, "onPause called") }
