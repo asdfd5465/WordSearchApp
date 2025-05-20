@@ -5,31 +5,35 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginTop="8dp"
-    android:layout_marginBottom="8dp"
+    android:layout_marginBottom="12dp" <!-- Slightly more space at bottom of card -->
     app:cardBackgroundColor="@color/card_background"
-    app:cardCornerRadius="12dp"
-    app:cardElevation="2dp">
+    app:cardCornerRadius="16dp" <!-- More rounded corners -->
+    app:cardElevation="2dp"
+    app:strokeWidth="0dp"> <!-- No extra stroke on card -->
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="16dp">
+        android:paddingStart="16dp"
+        android:paddingTop="16dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="20dp"> <!-- More bottom padding inside card -->
 
         <TextView
             android:id="@+id/itemPartOfSpeechTextView"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginBottom="6dp" <!-- Space after POS -->
             android:textAppearance="@style/TextAppearance.App.PartOfSpeech"
-            tools:text="Noun" />
+            tools:text="NOUN" />
 
         <TextView
             android:id="@+id/itemDefinitionTextView"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
             android:textAppearance="@style/TextAppearance.App.Definition"
-            tools:text="The act of defining, or of making something definite, distinct, or clear." />
+            tools:text="The act of working out the form of something (as by making a sketch or outline or plan)" />
 
         <!-- Examples Section -->
         <LinearLayout
@@ -37,7 +41,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="14dp" <!-- More space before examples -->
             android:visibility="gone"
             tools:visibility="visible">
 
@@ -47,15 +51,14 @@
                 android:text="Examples:"
                 android:textAppearance="@style/TextAppearance.App.Label" />
 
-            <!-- Examples will be added here programmatically if needed, or keep as one TextView -->
             <TextView
                 android:id="@+id/itemExamplesTextView"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:layout_marginTop="2dp"
+                android:layout_marginStart="12dp" <!-- Indent examples -->
+                android:layout_marginTop="4dp"
                 android:textAppearance="@style/TextAppearance.App.ExampleItem"
-                tools:text="- Example one here.\n- Another example."/>
+                tools:text="- he contributed to the design of a new instrument\n- he also designed the first rocket-propelled car" />
         </LinearLayout>
 
         <!-- Synonyms Section -->
@@ -64,7 +67,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="14dp"
+            android:gravity="start|top" <!-- Align label and text -->
             android:visibility="gone"
             tools:visibility="visible">
 
@@ -78,8 +82,9 @@
                 android:id="@+id/itemSynonymsTextView"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
                 android:textAppearance="@style/TextAppearance.App.MetaItem"
-                tools:text="term, expression, phrase" />
+                tools:text="designing, pattern, figure, invention" />
         </LinearLayout>
 
         <!-- Antonyms Section -->
@@ -88,7 +93,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="10dp"
+            android:gravity="start|top" <!-- Align label and text -->
             android:visibility="gone"
             tools:visibility="visible">
 
@@ -102,8 +108,9 @@
                 android:id="@+id/itemAntonymsTextView"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
                 android:textAppearance="@style/TextAppearance.App.MetaItem"
-                tools:text="opposite, contrary" />
+                tools:text="stupidity" />
         </LinearLayout>
 
     </LinearLayout>
