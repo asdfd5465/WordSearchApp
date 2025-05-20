@@ -5,11 +5,11 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginTop="8dp"
-    android:layout_marginBottom="12dp" <!-- Slightly more space at bottom of card -->
+    android:layout_marginBottom="12dp"
     app:cardBackgroundColor="@color/card_background"
-    app:cardCornerRadius="16dp" <!-- More rounded corners -->
+    app:cardCornerRadius="16dp"
     app:cardElevation="2dp"
-    app:strokeWidth="0dp"> <!-- No extra stroke on card -->
+    app:strokeWidth="0dp"> <!-- MAKE SURE THIS '>' IS PRESENT -->
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -18,13 +18,13 @@
         android:paddingStart="16dp"
         android:paddingTop="16dp"
         android:paddingEnd="16dp"
-        android:paddingBottom="20dp"> <!-- More bottom padding inside card -->
+        android:paddingBottom="20dp">
 
         <TextView
             android:id="@+id/itemPartOfSpeechTextView"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="6dp" <!-- Space after POS -->
+            android:layout_marginBottom="6dp"
             android:textAppearance="@style/TextAppearance.App.PartOfSpeech"
             tools:text="NOUN" />
 
@@ -35,13 +35,12 @@
             android:textAppearance="@style/TextAppearance.App.Definition"
             tools:text="The act of working out the form of something (as by making a sketch or outline or plan)" />
 
-        <!-- Examples Section -->
         <LinearLayout
             android:id="@+id/itemExamplesContainer"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:layout_marginTop="14dp" <!-- More space before examples -->
+            android:layout_marginTop="14dp"
             android:visibility="gone"
             tools:visibility="visible">
 
@@ -55,20 +54,19 @@
                 android:id="@+id/itemExamplesTextView"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="12dp" <!-- Indent examples -->
+                android:layout_marginStart="12dp"
                 android:layout_marginTop="4dp"
                 android:textAppearance="@style/TextAppearance.App.ExampleItem"
                 tools:text="- he contributed to the design of a new instrument\n- he also designed the first rocket-propelled car" />
         </LinearLayout>
 
-        <!-- Synonyms Section -->
         <LinearLayout
             android:id="@+id/itemSynonymsContainer"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:layout_marginTop="14dp"
-            android:gravity="start|top" <!-- Align label and text -->
+            android:gravity="start|top"
             android:visibility="gone"
             tools:visibility="visible">
 
@@ -87,14 +85,13 @@
                 tools:text="designing, pattern, figure, invention" />
         </LinearLayout>
 
-        <!-- Antonyms Section -->
         <LinearLayout
             android:id="@+id/itemAntonymsContainer"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:layout_marginTop="10dp"
-            android:gravity="start|top" <!-- Align label and text -->
+            android:gravity="start|top"
             android:visibility="gone"
             tools:visibility="visible">
 
