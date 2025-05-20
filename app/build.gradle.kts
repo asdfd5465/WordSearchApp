@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.nick.wordsearchapp"
+    namespace = "com.example.wordsearchapp"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.nick.wordsearchapp"
+        applicationId = "com.example.wordsearchapp"
         minSdk = 23
         targetSdk = 34
         versionCode = 1
