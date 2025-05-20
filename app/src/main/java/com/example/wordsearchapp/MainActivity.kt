@@ -1,58 +1,113 @@
-package com.example.wordsearchapp
+package com.example.wordsearchapp // Use your actual package name
 
 import android.content.Context
 import android.os.Bundle
-import android.util.Log // For logging
+import android.text.Editable
+import android.text.TextWatcher
+import android.util.Log
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
+import android.widget.ArrayAdapter
+import android.widget.AutoCompleteTextView // Changed from EditText for suggestions
 import android.widget.Button
-import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var wordEditText: EditText
+    // private lateinit var wordEditText: EditText // Changed to AutoCompleteTextView
+    private lateinit var wordAutoCompleteTextView: AutoCompleteTextView
     private lateinit var searchButton: Button
     private lateinit var meaningTextView: TextView
 
-    private val dictionaryApiService = DictionaryApiService()
-    private val TAG = "WordSearchAppMainActivity" // Tag for logging
+    // private val dictionaryApiService = DictionaryApiService() // REMOVE THIS
+    private lateinit var dbHelper: DatabaseHelper // ADD THIS
+    private lateinit var suggestionsAdapter: ArrayAdapter<String>
+
+
+    private val TAG = "WordSearchAppMainActivity"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         Log.d(TAG, "onCreate called")
 
-        wordEditText = findViewById(R.id.wordEditText)
+        // Initialize DatabaseHelper
+        dbHelper = DatabaseHelper(this) // Initialize before using
+
+        wordAutoCompleteTextView = findViewById(R.id.wordEditText) // Ensure ID in XML is wordEditText
         searchButton = findViewById(R.id.searchButton)
         meaningTextView = findViewById(R.id.meaningTextView)
 
+        setupAutoComplete()
+
         searchButton.setOnClickListener {
             Log.d(TAG, "Search button clicked")
-            performSearch()
+            val wordToSearch = wordAutoCompleteTextView.text.toString()
+            performSearch(wordToSearch)
         }
 
-        wordEditText.setOnEditorActionListener { _, actionId, _ ->
+        wordAutoCompleteTextView.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_SEARCH) {
                 Log.d(TAG, "IME action search triggered")
-                performSearch()
+                val wordToSearch = wordAutoCompleteTextView.text.toString()
+                performSearch(wordToSearch)
                 true
             } else {
                 false
             }
         }
+        // Listener for when a suggestion is clicked
+        wordAutoCompleteTextView.setOnItemClickListener { parent, _, position, _ ->
+            val selectedWord = parent.getItemAtPosition(position) as String
+            Log.d(TAG, "Suggestion selected: $selectedWord")
+            performSearch(selectedWord) // Search when a suggestion is clicked
+        }
     }
 
-    private fun performSearch() {
-        val word = wordEditText.text.toString().trim()
+    private fun setupAutoComplete() {
+        suggestionsAdapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, mutableListOf<String>())
+        wordAutoCompleteTextView.setAdapter(suggestionsAdapter)
+        wordAutoCompleteTextView.threshold = 1 // Start showing suggestions after 1 character
+
+        wordAutoCompleteTextView.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+
+            override fun afterTextChanged(s: Editable?) {
+                val query = s.toString().trim()
+                if (query.length >= wordAutoCompleteTextView.threshold) {
+                    // Use a coroutine to fetch suggestions off the main thread
+                    lifecycleScope.launch {
+                        val suggestions = withContext(Dispatchers.IO) {
+                            dbHelper.getWordSuggestions(query)
+                        }
+                        // Update adapter on the main thread
+                        suggestionsAdapter.clear()
+                        suggestionsAdapter.addAll(suggestions)
+                        suggestionsAdapter.filter.filter(null) // To display all fetched suggestions
+                        // OR if you want Android's filtering: suggestionsAdapter.filter.filter(query)
+                        Log.d(TAG, "Fetched suggestions for '$query': $suggestions")
+                    }
+                } else {
+                    suggestionsAdapter.clear()
+                    suggestionsAdapter.notifyDataSetChanged()
+                }
+            }
+        })
+    }
+
+
+    private fun performSearch(wordToSearch: String) {
+        val word = wordToSearch.trim()
         Log.d(TAG, "performSearch called with word: '$word'")
 
-        // Hide keyboard and clear focus (THIS CALL REMAINS)
         hideKeyboardAndClearFocus()
 
         if (word.isEmpty()) {
@@ -61,52 +116,51 @@ class MainActivity : AppCompatActivity() {
         }
 
         if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
-            meaningTextView.text = "Searching..." // Provide immediate feedback only if started
+            meaningTextView.text = "Searching..."
         } else {
             Log.w(TAG, "performSearch: Not updating 'Searching...' text, activity not started.")
         }
 
-
         lifecycleScope.launch {
-            Log.d(TAG, "Coroutine launched for API call")
-            val result = dictionaryApiService.getMeaning(word)
-            Log.d(TAG, "API call finished, result success: ${result.isSuccess}")
+            Log.d(TAG, "Coroutine launched for DB query")
+            // Perform DB query on a background thread
+            val wordEntryResult = withContext(Dispatchers.IO) {
+                if (!dbHelper.wordExists(word)) { // Optional: explicit validation
+                    Log.d(TAG, "Word '$word' does not exist in 'words' table according to dbHelper.wordExists.")
+                    // Fallback or directly try to get definition, as definition query also checks word_text
+                }
+                dbHelper.getWordDefinition(word)
+            }
+            Log.d(TAG, "DB query finished for '$word', result found: ${wordEntryResult != null}")
 
             if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
-                result.fold(
-                    onSuccess = { entries ->
-                        if (entries.isEmpty() || entries.first().meanings.isNullOrEmpty()) {
-                            meaningTextView.text = getString(R.string.no_definition_found)
-                            Log.d(TAG, "No definition found for '$word'")
-                        } else {
-                            val formattedResult = StringBuilder()
-                            entries.forEachIndexed { entryIndex, entry ->
-                                if (entryIndex > 0) formattedResult.append("\n\n---\n\n")
-                                formattedResult.append("Word: ${entry.word ?: "N/A"}\n")
-                                if (!entry.phonetic.isNullOrBlank()) {
-                                    formattedResult.append("Phonetic: ${entry.phonetic}\n")
-                                }
-                                entry.meanings?.forEach { meaning ->
-                                    formattedResult.append("\nPart of Speech: ${meaning.partOfSpeech ?: "N/A"}\n")
-                                    meaning.definitions?.forEachIndexed { defIndex, defDetail ->
-                                        formattedResult.append("  ${defIndex + 1}. ${defDetail.definition ?: "N/A"}\n")
-                                        if (!defDetail.example.isNullOrBlank()) {
-                                            formattedResult.append("     Example: ${defDetail.example}\n")
-                                        }
-                                    }
-                                }
-                            }
-                            meaningTextView.text = formattedResult.toString()
-                            Log.d(TAG, "Successfully displayed meaning for '$word'")
+                if (wordEntryResult != null && wordEntryResult.definitions != null && wordEntryResult.definitions.isNotEmpty()) {
+                    val formattedResult = StringBuilder()
+                    // The word itself is available from wordEntryResult.word
+                    // formattedResult.append("Word: ${wordEntryResult.word ?: "N/A"}\n") // Already known
+
+                    wordEntryResult.definitions.forEach { defDetail ->
+                        formattedResult.append("\nPart of Speech: ${defDetail.partOfSpeech ?: "N/A"}\n")
+                        formattedResult.append("  Definition: ${defDetail.definition ?: "N/A"}\n")
+                        defDetail.examples?.takeIf { it.isNotEmpty() }?.let { exs ->
+                            formattedResult.append("  Examples:\n")
+                            exs.forEach { ex -> formattedResult.append("    - $ex\n") }
                         }
-                    },
-                    onFailure = { exception ->
-                        meaningTextView.text = getString(R.string.error_fetching_meaning)
-                        Log.e(TAG, "Error fetching meaning for '$word'", exception)
+                        defDetail.synonyms?.takeIf { it.isNotEmpty() }?.let { syns ->
+                            formattedResult.append("  Synonyms: ${syns.joinToString(", ")}\n")
+                        }
+                        defDetail.antonyms?.takeIf { it.isNotEmpty() }?.let { ants ->
+                            formattedResult.append("  Antonyms: ${ants.joinToString(", ")}\n")
+                        }
                     }
-                )
+                    meaningTextView.text = formattedResult.toString()
+                    Log.d(TAG, "Successfully displayed meaning for '$word' from DB")
+                } else {
+                    meaningTextView.text = getString(R.string.no_definition_found)
+                    Log.d(TAG, "No definition found for '$word' in DB")
+                }
             } else {
-                Log.w(TAG, "performSearch: Not updating UI with result, activity no longer started. Word: '$word', Success: ${result.isSuccess}")
+                Log.w(TAG, "performSearch: Not updating UI with result, activity no longer started. Word: '$word', Found: ${wordEntryResult != null}")
             }
         }
     }
@@ -121,50 +175,51 @@ class MainActivity : AppCompatActivity() {
         focusedView?.let {
             inputMethodManager.hideSoftInputFromWindow(it.windowToken, 0)
             it.clearFocus()
-             Log.d(TAG, "Keyboard hidden and focus cleared for view: $it")
+            Log.d(TAG, "Keyboard hidden and focus cleared for view: $it")
         } ?: run {
             Log.d(TAG, "No view currently has focus to hide keyboard from or clear.")
         }
-        if (::wordEditText.isInitialized && wordEditText != focusedView) {
-            wordEditText.clearFocus()
+        if (::wordAutoCompleteTextView.isInitialized && wordAutoCompleteTextView != focusedView) {
+            wordAutoCompleteTextView.clearFocus()
         }
     }
 
+    // Lifecycle methods (onStart, onResume, onPause, onStop, onDestroy) remain the same for logging
     override fun onStart() {
-        val startTime = System.currentTimeMillis() // For profiling
+        val startTime = System.currentTimeMillis()
         super.onStart()
         Log.d(TAG, "onStart called")
-        Log.d(TAG, "onStart finished in ${System.currentTimeMillis() - startTime}ms") // For profiling
+        Log.d(TAG, "onStart finished in ${System.currentTimeMillis() - startTime}ms")
     }
 
     override fun onResume() {
-        val startTime = System.currentTimeMillis() // For profiling
+        val startTime = System.currentTimeMillis()
         super.onResume()
         Log.d(TAG, "onResume called")
-        Log.d(TAG, "onResume finished in ${System.currentTimeMillis() - startTime}ms") // For profiling
+        Log.d(TAG, "onResume finished in ${System.currentTimeMillis() - startTime}ms")
     }
 
     override fun onPause() {
-        val startTime = System.currentTimeMillis() // For profiling
+        val startTime = System.currentTimeMillis()
         super.onPause()
         Log.d(TAG, "onPause called")
-        // hideKeyboardAndClearFocus() // Still commented out as per previous discussion if it causes issues
-        Log.d(TAG, "onPause finished in ${System.currentTimeMillis() - startTime}ms") // For profiling
+        Log.d(TAG, "onPause finished in ${System.currentTimeMillis() - startTime}ms")
     }
 
     override fun onStop() {
-        val startTime = System.currentTimeMillis() // For profiling
+        val startTime = System.currentTimeMillis()
         super.onStop()
-        Log.d(TAG, "onStop called") // Log still present
-        // hideKeyboardAndClearFocus() // << MODIFICATION: Temporarily commented out for this test
-        Log.d(TAG, "onStop (hideKeyboardAndClearFocus was commented out for this test)") // Clarify in logs
-        Log.d(TAG, "onStop finished in ${System.currentTimeMillis() - startTime}ms") // For profiling
+        Log.d(TAG, "onStop called")
+        // hideKeyboardAndClearFocus() // Keep this commented based on previous findings
+        Log.d(TAG, "onStop (hideKeyboardAndClearFocus was commented out for this test in previous version)")
+        Log.d(TAG, "onStop finished in ${System.currentTimeMillis() - startTime}ms")
     }
 
     override fun onDestroy() {
-        val startTime = System.currentTimeMillis() // For profiling
+        val startTime = System.currentTimeMillis()
         super.onDestroy()
         Log.d(TAG, "onDestroy called")
-        Log.d(TAG, "onDestroy finished in ${System.currentTimeMillis() - startTime}ms") // For profiling
+        // dbHelper.close() // SQLiteOpenHelper handles this
+        Log.d(TAG, "onDestroy finished in ${System.currentTimeMillis() - startTime}ms")
     }
 }
