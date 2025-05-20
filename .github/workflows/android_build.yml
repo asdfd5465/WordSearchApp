@@ -91,14 +91,6 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
-      - name: Display activity_main.xml content from runner
-        run: |
-          echo "--- Content of app/src/main/res/layout/activity_main.xml as seen by runner: ---"
-          cat app/src/main/res/layout/activity_main.xml
-          echo "------------------------------------------------------------------------------"
-          echo "--- Content of app/src/main/res/layout/item_definition.xml as seen by runner: ---"
-          cat app/src/main/res/layout/item_definition.xml
-          echo "---------------------------------------------------------------------------------"
 
       - name: Build with Gradle
         run: |
