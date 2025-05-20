@@ -92,6 +92,7 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Build with Gradle
+        run: ./gradlew clean      
         run: ./gradlew assembleDebug
         env:
           # Ensure ANDROID_SDK_ROOT and ANDROID_HOME are available to Gradle
