@@ -1,8 +1,6 @@
-// Keep these imports. If they are not working, the issue might be deeper,
-// but they should be standard.
-import java.io.File
-import java.io.FileInputStream
+// Imports should still be fine here, but the usage below will change.
 import java.util.Properties
+import java.io.FileInputStream // We will still use this for reading the stream
 
 plugins {
     id("com.android.application")
@@ -10,27 +8,31 @@ plugins {
 }
 
 // Function to load properties from gradle.properties
-fun loadProperties(projectDir: java.io.File, fileName: String = "gradle.properties"): Properties {
+fun loadProperties(project: Project, fileName: String = "gradle.properties"): Properties {
     val properties = Properties()
-    val propertiesFile = java.io.File(projectDir, fileName) // Using fully qualified name here just in case
+    // Use project.file() to get a File object relative to the project directory
+    val propertiesFile = project.file(fileName)
     if (propertiesFile.exists()) {
-        // Using a standard try-with-resources equivalent for Kotlin
         try {
-            FileInputStream(propertiesFile).use { inputStream -> // Explicitly name the lambda parameter
+            FileInputStream(propertiesFile).use { inputStream ->
                 properties.load(inputStream)
             }
         } catch (e: Exception) {
-            // Log error or handle it if properties file can't be read
-            println("Warning: Could not load properties from ${propertiesFile.path}: ${e.message}")
+            project.logger.warn("Warning: Could not load properties from ${propertiesFile.path}: ${e.message}")
         }
+    } else {
+        project.logger.info("Info: Properties file not found at ${propertiesFile.path}")
     }
     return properties
 }
 
-val localAppProperties = loadProperties(project.projectDir)
+// Load local properties. Pass 'project' which refers to the current app module's project.
+val localAppProperties = loadProperties(project, "gradle.properties") // Assumes gradle.properties in app module root
+// Or if it's in the root project: val localRootProperties = loadProperties(project.rootDir, "gradle.properties")
+
 
 android {
-    namespace = "com.offlinedictionary.pro" // Your actual package name
+    namespace = "com.offlinedictionary.pro"
     compileSdk = 34
 
     // --- SIGNING CONFIGURATION START ---
@@ -42,25 +44,27 @@ android {
     signingConfigs {
         create("release") {
             if (storeFileVar != null && storePasswordVar != null && keyAliasVar != null && keyPasswordVar != null) {
-                val keystore = java.io.File(storeFileVar) // Using fully qualified name here
-                if (keystore.exists()) {
-                    storeFile = keystore // Gradle's 'storeFile' property expects a java.io.File
+                // Use project.file() to resolve the keystore path string to a File object
+                // This is more robust within Gradle scripts.
+                val keystoreFileObject = project.file(storeFileVar)
+                if (keystoreFileObject.exists()) {
+                    storeFile = keystoreFileObject // Gradle's 'storeFile' property expects a java.io.File
                     storePassword = storePasswordVar
                     this.keyAlias = keyAliasVar
                     this.keyPassword = keyPasswordVar
-                    println("Release signing configured with: $storeFileVar")
+                    println("Release signing configured with: ${keystoreFileObject.absolutePath}")
                 } else {
-                    println("WARNING: Keystore file not found at '$storeFileVar'. Release build will not be signed properly.")
+                    println("WARNING: Keystore file not found at '${storeFileVar}'. Evaluated path: ${keystoreFileObject.absolutePath}. Release build will not be signed properly.")
                 }
             } else {
-                println("WARNING: Release signing information not fully provided. Release build may not be signed.")
+                println("WARNING: Release signing information not fully provided (keystore path, passwords, or alias missing). Release build may not be signed.")
             }
         }
     }
     // --- SIGNING CONFIGURATION END ---
 
     defaultConfig {
-        applicationId = "com.offlinedictionary.pro" // Your actual package name
+        applicationId = "com.offlinedictionary.pro"
         minSdk = 23
         targetSdk = 34
         versionCode = 1
