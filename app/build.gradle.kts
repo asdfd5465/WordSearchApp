@@ -1,63 +1,42 @@
-// Imports should still be fine here, but the usage below will change.
-import java.util.Properties
-import java.io.FileInputStream // We will still use this for reading the stream
+// NO top-level imports for java.io.File or FileInputStream for now.
+// Let Gradle handle file resolution within its DSL blocks.
+import java.util.Properties // This one is usually fine for Gradle itself.
 
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
 
-// Function to load properties from gradle.properties
-fun loadProperties(project: Project, fileName: String = "gradle.properties"): Properties {
-    val properties = Properties()
-    // Use project.file() to get a File object relative to the project directory
-    val propertiesFile = project.file(fileName)
-    if (propertiesFile.exists()) {
-        try {
-            FileInputStream(propertiesFile).use { inputStream ->
-                properties.load(inputStream)
-            }
-        } catch (e: Exception) {
-            project.logger.warn("Warning: Could not load properties from ${propertiesFile.path}: ${e.message}")
-        }
-    } else {
-        project.logger.info("Info: Properties file not found at ${propertiesFile.path}")
-    }
-    return properties
-}
-
-// Load local properties. Pass 'project' which refers to the current app module's project.
-val localAppProperties = loadProperties(project, "gradle.properties") // Assumes gradle.properties in app module root
-// Or if it's in the root project: val localRootProperties = loadProperties(project.rootDir, "gradle.properties")
-
-
 android {
     namespace = "com.offlinedictionary.pro"
     compileSdk = 34
 
     // --- SIGNING CONFIGURATION START ---
-    val storeFileVar = System.getenv("MYAPP_RELEASE_STORE_FILE") ?: localAppProperties.getProperty("MYAPP_RELEASE_STORE_FILE")
-    val storePasswordVar = System.getenv("MYAPP_RELEASE_STORE_PASSWORD") ?: localAppProperties.getProperty("MYAPP_RELEASE_STORE_PASSWORD")
-    val keyAliasVar = System.getenv("MYAPP_RELEASE_KEY_ALIAS") ?: localAppProperties.getProperty("MYAPP_RELEASE_KEY_ALIAS")
-    val keyPasswordVar = System.getenv("MYAPP_RELEASE_KEY_PASSWORD") ?: localAppProperties.getProperty("MYAPP_RELEASE_KEY_PASSWORD")
-
     signingConfigs {
         create("release") {
-            if (storeFileVar != null && storePasswordVar != null && keyAliasVar != null && keyPasswordVar != null) {
-                // Use project.file() to resolve the keystore path string to a File object
-                // This is more robust within Gradle scripts.
-                val keystoreFileObject = project.file(storeFileVar)
-                if (keystoreFileObject.exists()) {
-                    storeFile = keystoreFileObject // Gradle's 'storeFile' property expects a java.io.File
-                    storePassword = storePasswordVar
-                    this.keyAlias = keyAliasVar
-                    this.keyPassword = keyPasswordVar
-                    println("Release signing configured with: ${keystoreFileObject.absolutePath}")
-                } else {
-                    println("WARNING: Keystore file not found at '${storeFileVar}'. Evaluated path: ${keystoreFileObject.absolutePath}. Release build will not be signed properly.")
-                }
+            // Read directly from environment variables.
+            // These are expected to be set by the GitHub Actions workflow.
+            val storeFileFromEnv = System.getenv("MYAPP_RELEASE_STORE_FILE")
+            val storePasswordFromEnv = System.getenv("MYAPP_RELEASE_STORE_PASSWORD")
+            val keyAliasFromEnv = System.getenv("MYAPP_RELEASE_KEY_ALIAS")
+            val keyPasswordFromEnv = System.getenv("MYAPP_RELEASE_KEY_PASSWORD")
+
+            if (storeFileFromEnv != null && !storeFileFromEnv.isEmpty() &&
+                storePasswordFromEnv != null && !storePasswordFromEnv.isEmpty() &&
+                keyAliasFromEnv != null && !keyAliasFromEnv.isEmpty() &&
+                keyPasswordFromEnv != null && !keyPasswordFromEnv.isEmpty()) {
+
+                // Gradle's 'storeFile' property can take a String path and resolve it.
+                // It will then internally convert it to a File object.
+                storeFile = project.file(storeFileVar) // Use project.file() to resolve path correctly
+                storePassword = storePasswordFromEnv
+                this.keyAlias = keyAliasFromEnv // Use 'this.keyAlias' to avoid Kotlin property/method name clash
+                this.keyPassword = keyPasswordFromEnv
+                println("Release signing configured using environment variables. Keystore path: $storeFileFromEnv")
             } else {
-                println("WARNING: Release signing information not fully provided (keystore path, passwords, or alias missing). Release build may not be signed.")
+                println("WARNING: Release signing information not fully provided via environment variables. Release build may not be signed or may fail.")
+                // For CI, if secrets are not set, this will be the state.
+                // The build might fail later if signing is strictly required and no valid config is found.
             }
         }
     }
@@ -67,7 +46,7 @@ android {
         applicationId = "com.offlinedictionary.pro"
         minSdk = 23
         targetSdk = 34
-        versionCode = 1
+        versionCode = 1 // Stable Release
         versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -79,12 +58,13 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = true
-            isShrinkResources = true
+            isMinifyEnabled = true // Changed to true for release
+            isShrinkResources = true // Added for release
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Apply the signing configuration to the release build type
             signingConfig = signingConfigs.getByName("release")
         }
         debug {
