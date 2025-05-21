@@ -12,5 +12,6 @@
     <string name="tts_init_failed">Text-to-Speech initialization failed.</string>
     <string name="tts_language_not_supported">This language is not supported for speech.</string>
     <string name="speaker_icon_content_description">Pronounce word</string>
-    <string name="footer_text">Built with AI</string>
+    
 </resources>
+<!-- string name="footer_text">Built with AI</string -->
