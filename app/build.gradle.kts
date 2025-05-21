@@ -4,15 +4,15 @@
 }
 
 android {
-    namespace = "com.example.wordsearchapp" // Your package name
+    namespace = "com.offlinedictionary.pro" // Your package name
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.example.wordsearchapp" // Your package name
+        applicationId = "com.offlinedictionary.pro" // Your package name
         minSdk = 23
         targetSdk = 34
-        versionCode = 3 // Increment version code for new DB
-        versionName = "3.0-offline" // Increment version name
+        versionCode = 1 // Stable Release
+        versionName = "1.0.0" // Increment version name
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
