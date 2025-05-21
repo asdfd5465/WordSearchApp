@@ -1,29 +1,33 @@
-// Add these imports at the VERY TOP of the file
-import java.io.File // For java.io.File
-import java.io.FileInputStream // For FileInputStream
-import java.util.Properties // Already there, but ensure it's at the top
+// Keep these imports. If they are not working, the issue might be deeper,
+// but they should be standard.
+import java.io.File
+import java.io.FileInputStream
+import java.util.Properties
 
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
 
-// Function to load properties from gradle.properties (optional for local builds)
-fun loadProperties(projectDir: File, fileName: String = "gradle.properties"): Properties { // Changed java.io.File to File
+// Function to load properties from gradle.properties
+fun loadProperties(projectDir: java.io.File, fileName: String = "gradle.properties"): Properties {
     val properties = Properties()
-    val propertiesFile = File(projectDir, fileName) // Changed java.io.File to File
+    val propertiesFile = java.io.File(projectDir, fileName) // Using fully qualified name here just in case
     if (propertiesFile.exists()) {
-        FileInputStream(propertiesFile).use { inputStream -> // Explicitly name the lambda parameter
-            properties.load(inputStream)
+        // Using a standard try-with-resources equivalent for Kotlin
+        try {
+            FileInputStream(propertiesFile).use { inputStream -> // Explicitly name the lambda parameter
+                properties.load(inputStream)
+            }
+        } catch (e: Exception) {
+            // Log error or handle it if properties file can't be read
+            println("Warning: Could not load properties from ${propertiesFile.path}: ${e.message}")
         }
     }
     return properties
 }
 
-// Load local properties (if they exist, primarily for local signing)
-// This is kept separate so it doesn't break CI if gradle.properties isn't there.
-// val localProperties = loadProperties(project.rootDir) // If gradle.properties is in root project
-val localAppProperties = loadProperties(project.projectDir) // If gradle.properties is in app module root
+val localAppProperties = loadProperties(project.projectDir)
 
 android {
     namespace = "com.offlinedictionary.pro" // Your actual package name
@@ -38,9 +42,9 @@ android {
     signingConfigs {
         create("release") {
             if (storeFileVar != null && storePasswordVar != null && keyAliasVar != null && keyPasswordVar != null) {
-                val keystore = File(storeFileVar) // Changed java.io.File to File
+                val keystore = java.io.File(storeFileVar) // Using fully qualified name here
                 if (keystore.exists()) {
-                    storeFile = keystore
+                    storeFile = keystore // Gradle's 'storeFile' property expects a java.io.File
                     storePassword = storePasswordVar
                     this.keyAlias = keyAliasVar
                     this.keyPassword = keyPasswordVar
