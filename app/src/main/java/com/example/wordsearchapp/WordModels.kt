@@ -1,5 +1,5 @@
 
-package com.example.wordsearchapp // Use your actual package name
+package com.offlinedictionary.pro
 
 import com.google.gson.annotations.SerializedName // Still needed if you use it elsewhere, but not for DB direct mapping
 
