@@ -1,158 +1,121 @@
 #===============================================================================
-# Standard Android Optimizations (already included by getDefaultProguardFile)
+# Android Default Optimizations (provided by getDefaultProguardFile)
 #===============================================================================
-# You typically don't need to repeat rules from proguard-android-optimize.txt,
-# but this section is for general awareness.
+# This file is for YOUR app-specific rules.
+# The "proguard-android-optimize.txt" already handles many common Android rules.
 
 #===============================================================================
-# Keep Application, Activities, Services, BroadcastReceivers, ContentProviders
+# Keep Application and Core Android Components
 #===============================================================================
-# Keep all public classes that extend Application, Activity, Service, etc.
-# and their public/protected members.
--keep public class * extends android.app.Activity
--keep public class * extends android.app.Application
--keep public class * extends android.app.Service
--keep public class * extends android.content.BroadcastReceiver
--keep public class * extends android.content.ContentProvider
--keep public class * extends android.app.backup.BackupAgentHelper
--keep public class * extends android.preference.Preference
--keep public class * extends androidx.core.app.JobIntentService
--keep public class * extends androidx.lifecycle.ViewModel
+# Keep your main Application class if you have one (you don't currently)
+# -keep public class com.offlinedictionary.pro.MyApplication extends android.app.Application
 
-# Keep specific main activity if not covered above (though it should be)
-# Replace com.offlinedictionary.pro with your actual package name if different
+# Keep your Activities. The default Android rules usually cover this,
+# but being explicit for the main launcher activity is safe.
 -keep public class com.offlinedictionary.pro.MainActivity {
-    public *;
+    public <init>(); # Keep constructor
+    public *;       # Keep all public members
 }
-
-# Keep any custom views that are referenced from XML layouts if their constructors
-# are not found. (You don't have custom views yet, but good to know)
-# -keep public class com.yourpackage.YourCustomView {
-#    public <init>(android.content.Context);
-#    public <init>(android.content.Context, android.util.AttributeSet);
-#    public <init>(android.content.Context, android.util.AttributeSet, int);
-# }
+# Add other Activities, Services, BroadcastReceivers, ContentProviders here if you add them.
+# Example:
+# -keep public class * extends android.app.Service
+# -keep public class * extends android.content.BroadcastReceiver
 
 #===============================================================================
-# Keep Data Classes / Models (especially if used with reflection/serialization)
+# Keep Data Classes / Models
 #===============================================================================
-# Replace com.offlinedictionary.pro with your actual package name
-# Keep all fields and constructors of your data classes.
+# Since Gson is used in DatabaseHelper to parse JSON strings into List<String>
+# for fields within DefinitionDetail, we need to ensure DefinitionDetail and its
+# relevant fields are kept if Gson relies on field names for mapping (which it does).
+# WordDefinitionEntry is also important.
 -keep class com.offlinedictionary.pro.WordDefinitionEntry { *; }
 -keep class com.offlinedictionary.pro.DefinitionDetail { *; }
-# Add any other model/data classes here
 
-# If using Gson for more complex object serialization/deserialization:
-# Keep constructors and fields for classes specifically used with Gson.
-# -keepclassmembers class com.offlinedictionary.pro.** {
-#   <init>(...); # Keep constructors
-#   private <fields>; # Keep fields
-# }
-# -keepattributes Signature # Needed for generic types with Gson
-# -keepattributes InnerClasses # If you have inner classes used with Gson
-
-# More specific Gson rule for data classes (often sufficient):
+# Gson specific rules (often needed if serializing/deserializing custom objects directly)
+# Keep these for safety with Gson, especially if you plan to use it more.
 -keepattributes Signature
--keepattributes *Annotation*
--keep class com.google.gson.reflect.TypeToken { *; } # Keep TypeToken if used
--keep class sun.misc.Unsafe { *; } # Gson might use Unsafe internally on some JVMs/Android versions
+-keepattributes InnerClasses
+-keepattributes *Annotation* # Keep annotations, useful for libraries
+-keep class com.google.gson.reflect.TypeToken { *; }
+-keep class sun.misc.Unsafe { *; } # Gson might use this
 
-# For your specific Gson usage (parsing List<String> from DB):
-# The TypeToken rule above and keeping your DefinitionDetail fields should suffice.
-
-
-#===============================================================================
-# Keep Enums (if used with valueOf() or values())
-#===============================================================================
-# -keepclassmembers enum * {
-#     public static **[] values();
-#     public static ** valueOf(java.lang.String);
+# Keep constructors and fields of classes that Gson will instantiate or populate via reflection.
+# This is a common pattern for classes (de)serialized by Gson.
+# For your current use (List<String>), the above should be sufficient, but this is more general.
+# -keepclassmembers,allowobfuscation class * {
+#  @com.google.gson.annotations.SerializedName <fields>;
 # }
-
-#===============================================================================
-# Keep Parcelable classes
-#===============================================================================
-# -keep class * implements android.os.Parcelable {
-#   public static final android.os.Parcelable$Creator *;
-#   private static final long serialVersionUID; # If also Serializable
-# }
-# -keepclassmembers class * implements android.os.Parcelable {
-#   public void writeToParcel(android.os.Parcel,int);
+# -keepclassmembers class com.offlinedictionary.pro.** { # Your model package
+#    <init>(...); # Keep constructors
+#    private <fields>; # Keep fields, even private, if Gson accesses them
 # }
 
 
 #===============================================================================
-# Keep Callback Methods (e.g., View onClick in XML, JNI)
+# Keep Kotlin Specifics
 #===============================================================================
-# If you use android:onClick="methodName" in your XML layouts:
-# -keepclassmembers class * extends android.app.Activity {
-#    public void methodName(android.view.View);
-# }
-# (You are using programmatic listeners, so this is not strictly needed for you now)
-
-
-#===============================================================================
-# Kotlin Specific Rules
-#===============================================================================
-# Keep Kotlin metadata. This is very important for Kotlin reflection and other features.
--keepattributes RuntimeVisibleAnnotations,Signature,KotlinIdentifiers,Kotlin ब्रह्मांड_प्रकाशित
+# Keep Kotlin metadata - VERY IMPORTANT.
+-keepattributes RuntimeVisibleAnnotations,Signature,KotlinIdentifiers,KotlinUMP
 -keep class kotlin.Metadata { *; }
--keep class kotlin.reflect. ανέκφραστοFunction { *; } # For coroutines and lambdas
 
-# Keep default_നോട്ടുകൾ classes and methods (often generated for default arguments)
+# Keep classes and members related to coroutines and suspend functions.
+# The KotlinUMP and Metadata rules usually handle this, but being more explicit
+# can sometimes help with more complex coroutine usage.
+-keepnames class kotlinx.coroutines.flow.** { *; }
+-keepnames class kotlinx.coroutines.channels.** { *; }
+-keepclassmembers class ** {
+    public static java.lang.Object *(kotlin.coroutines.Continuation);
+}
+-keepclassmembers class kotlin.coroutines.jvm.internal.BaseContinuationImpl {
+    kotlin.coroutines.Continuation getCompletion();
+    void setCompletion(kotlin.coroutines.Continuation);
+}
+-keepclassmembers class kotlin.coroutines.jvm.internal.SuspendLambda { *; }
+-keepclassmembers class kotlin.coroutines.jvm.internal.ContinuationImpl { *; }
+-keepclassmembers class kotlin.coroutines.jvm.internal.RunSuspend { *; }
+
+
+# Keep default_implementations classes and methods (generated for default arguments in interfaces)
 -keepclassmembers class **$DefaultImpls {
     *;
 }
 
-# Keep companion objects' members if they are accessed via reflection or from native code
-# -keepclassmembers class * {
-#    static <fields>;
-#    static <methods>;
-# }
-
-# Keep suspend functions for coroutines (generally handled by Kotlin metadata, but can be explicit)
-# -keepclassmembers class ** {
-#    public static java.lang.Object *(kotlin.coroutines.Continuation);
-# }
-# -keepnames class kotlinx.coroutines.flow.* # Keep names for coroutine flow classes
+# Keep functions used in lambdas if they are not correctly preserved by metadata.
+# -keepclassmembers class kotlin.jvm.functions.Function* { *; }
 
 
 #===============================================================================
-# AndroidX and Material Components Library Rules
+# AndroidX and Material Components Libraries
 #===============================================================================
-# These libraries usually include their own consumer ProGuard rules.
-# However, if you experience issues specifically with these, you might need to add rules.
-# For example, for Material Components, if a specific component isn't working:
-# -keep class com.google.android.material.** { *; }
-# -keep interface com.google.android.material.** { *; }
-# But this is usually overly broad and not needed.
+# These libraries generally provide their own consumer ProGuard rules,
+# so explicit rules here are often not needed.
+# If you encounter issues with a specific component (e.g., a Material dialog, view),
+# you might need to add a rule like:
+# -keep class com.google.android.material.textfield.MaterialAutoCompleteTextView { *; }
+# But only do this if you confirm it's being removed/obfuscated incorrectly.
 
 
 #===============================================================================
 # Specific Rule for BuildConfig (used in your DatabaseHelper)
 #===============================================================================
-# Replace com.offlinedictionary.pro with your actual package name
 -keep class com.offlinedictionary.pro.BuildConfig { *; }
 
 
 #===============================================================================
 # TextToSpeech (TTS)
 #===============================================================================
-# Generally, TTS doesn't require special ProGuard rules if used directly.
-# However, if any callbacks or internal classes were being obfuscated causing issues:
-# -keep class android.speech.tts.** { *; }
-# -keep interface android.speech.tts.** { *; }
+# Android's TextToSpeech service itself is a system component.
+# Your direct interactions (calling methods on TextToSpeech instance, implementing OnInitListener)
+# should be fine if your Activity and its methods are kept.
+# No specific rules are usually needed for standard TTS usage.
+# -keep class android.speech.tts.** { *; } # Usually not needed
+# -keep interface android.speech.tts.** { *; } # Usually not needed
 
 
 #===============================================================================
 # SQLiteOpenHelper and Database operations
 #===============================================================================
-# Your DatabaseHelper class and its methods that are public or accessed by the system.
-# The rule for `* extends android.app.Activity` implicitly covers keeping public methods
-# if your `DatabaseHelper` is instantiated there.
-# If `DatabaseHelper` methods were private and accessed via reflection (not your case),
-# they would need specific rules.
-# Replace com.offlinedictionary.pro with your actual package name
+# Ensure your DatabaseHelper class and its public methods are kept.
 -keep class com.offlinedictionary.pro.DatabaseHelper {
    public <init>(android.content.Context); # Keep constructor
    public *; # Keep all public members (methods and fields)
@@ -160,13 +123,10 @@
 
 
 #===============================================================================
-# General good practices
+# General Good Practices / Safety Nets
 #===============================================================================
-# Do not warn about classes not found if they are optional dependencies
-# (e.g., if a library can work with or without another library)
-# -dontwarn com.example.optional.library.**
-
-# Keep names of classes and members annotated with @Keep from androidx.annotation.Keep
+# Keep classes and members annotated with @Keep from androidx.annotation.Keep
+# This allows you to explicitly mark things in code that ProGuard/R8 must not touch.
 -keep @androidx.annotation.Keep class * {*;}
 -keepclasseswithmembers class * {
     @androidx.annotation.Keep <fields>;
@@ -175,11 +135,14 @@
     @androidx.annotation.Keep <methods>;
 }
 
-# Preserve line numbers for better stack traces in release builds (optional)
+# Preserve line numbers for better stack traces in release builds.
 # This slightly increases APK size but is invaluable for debugging crashes from production.
 -keepattributes SourceFile,LineNumberTable
 
-# If you use any JNI (Java Native Interface), you'll need to keep native methods.
-# -keepclasseswithmembernames class * {
-#    native <methods>;
-# }
+# If you were to use ViewBinding or DataBinding (you are not currently):
+# -keepattributes *Binding*
+# -keep class **/*Binding { <init>(...); } # Adjust package if needed
+
+# Example: Do not warn about classes from a library that might be missing if that library
+# has optional dependencies. (You don't seem to need this now).
+# -dontwarn com.example.optional.library.**
