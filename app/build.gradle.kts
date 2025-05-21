@@ -1,6 +1,4 @@
-// NO top-level imports for java.io.File or FileInputStream for now.
-// Let Gradle handle file resolution within its DSL blocks.
-import java.util.Properties // This one is usually fine for Gradle itself.
+import java.util.Properties // Still might be needed if you add local properties loading later
 
 plugins {
     id("com.android.application")
@@ -11,32 +9,29 @@ android {
     namespace = "com.offlinedictionary.pro"
     compileSdk = 34
 
+    // Define these variables INSIDE the android block so they are in scope
+    // for signingConfigs
+    val storeFileFromEnv = System.getenv("MYAPP_RELEASE_STORE_FILE")
+    val storePasswordFromEnv = System.getenv("MYAPP_RELEASE_STORE_PASSWORD")
+    val keyAliasFromEnv = System.getenv("MYAPP_RELEASE_KEY_ALIAS")
+    val keyPasswordFromEnv = System.getenv("MYAPP_RELEASE_KEY_PASSWORD")
+
     // --- SIGNING CONFIGURATION START ---
     signingConfigs {
         create("release") {
-            // Read directly from environment variables.
-            // These are expected to be set by the GitHub Actions workflow.
-            val storeFileFromEnv = System.getenv("MYAPP_RELEASE_STORE_FILE")
-            val storePasswordFromEnv = System.getenv("MYAPP_RELEASE_STORE_PASSWORD")
-            val keyAliasFromEnv = System.getenv("MYAPP_RELEASE_KEY_ALIAS")
-            val keyPasswordFromEnv = System.getenv("MYAPP_RELEASE_KEY_PASSWORD")
+            if (storeFileFromEnv != null && storeFileFromEnv.isNotEmpty() &&
+                storePasswordFromEnv != null && storePasswordFromEnv.isNotEmpty() &&
+                keyAliasFromEnv != null && keyAliasFromEnv.isNotEmpty() &&
+                keyPasswordFromEnv != null && keyPasswordFromEnv.isNotEmpty()) {
 
-            if (storeFileFromEnv != null && !storeFileFromEnv.isEmpty() &&
-                storePasswordFromEnv != null && !storePasswordFromEnv.isEmpty() &&
-                keyAliasFromEnv != null && !keyAliasFromEnv.isEmpty() &&
-                keyPasswordFromEnv != null && !keyPasswordFromEnv.isEmpty()) {
-
-                // Gradle's 'storeFile' property can take a String path and resolve it.
-                // It will then internally convert it to a File object.
-                storeFile = project.file(storeFileVar) // Use project.file() to resolve path correctly
+                // Now storeFileFromEnv is correctly in scope
+                storeFile = project.file(storeFileFromEnv)
                 storePassword = storePasswordFromEnv
-                this.keyAlias = keyAliasFromEnv // Use 'this.keyAlias' to avoid Kotlin property/method name clash
+                this.keyAlias = keyAliasFromEnv
                 this.keyPassword = keyPasswordFromEnv
                 println("Release signing configured using environment variables. Keystore path: $storeFileFromEnv")
             } else {
                 println("WARNING: Release signing information not fully provided via environment variables. Release build may not be signed or may fail.")
-                // For CI, if secrets are not set, this will be the state.
-                // The build might fail later if signing is strictly required and no valid config is found.
             }
         }
     }
@@ -58,13 +53,12 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = true // Changed to true for release
-            isShrinkResources = true // Added for release
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // Apply the signing configuration to the release build type
             signingConfig = signingConfigs.getByName("release")
         }
         debug {
