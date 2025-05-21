@@ -2,6 +2,7 @@ package com.example.wordsearchapp // Or your new package name: com.newcompany.ne
 
 import android.content.Context
 import android.os.Bundle
+import android.speech.tts.TextToSpeech
 import android.text.Editable
 import android.text.TextWatcher
 import android.util.Log
@@ -10,52 +11,63 @@ import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.ArrayAdapter
-// import android.widget.AutoCompleteTextView // Still commented out, which is fine
 import android.widget.Button
+import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-// import androidx.core.view.isVisible // This import was present in your pasted code, but not used. Keep if needed elsewhere, or remove.
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
-import com.google.android.material.textfield.MaterialAutoCompleteTextView // Keep this one
+import com.google.android.material.textfield.MaterialAutoCompleteTextView
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-// REMOVE: import com.google.android.material.textfield.MaterialAutoCompleteTextView (this was the duplicate)
+import java.util.Locale // For TTS
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private lateinit var wordAutoCompleteTextView: MaterialAutoCompleteTextView
     private lateinit var searchButton: Button
     private lateinit var definitionsContainer: LinearLayout
     private lateinit var resultsScrollView: ScrollView
     private lateinit var noResultsTextView: TextView
+    private lateinit var welcomeMessageContainer: LinearLayout
+    private lateinit var searchedWordContainer: LinearLayout
+    private lateinit var searchedWordTextView: TextView
+    private lateinit var ttsButton: ImageButton
 
     private lateinit var dbHelper: DatabaseHelper
     private lateinit var suggestionsAdapter: ArrayAdapter<String>
+
+    private var tts: TextToSpeech? = null
+    private var ttsReady = false
+    private var currentWordToSpeak: String? = null
 
     private val TAG = "WordSearchAppMainActivity"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Ensure your package name is correct here if you changed it.
-        // If MainActivity is in com.newcompany.newapp, then R should be found.
-        // If MainActivity is still in com.example.wordsearchapp BUT your namespace in build.gradle
-        // is com.newcompany.newapp, you'd need to import com.newcompany.newapp.R
-        setTheme(R.style.Theme_WordSearchApp) 
+        // setTheme(R.style.Theme_WordSearchApp) // Usually set in Manifest
         setContentView(R.layout.activity_main)
         Log.d(TAG, "onCreate called")
 
         dbHelper = DatabaseHelper(this)
+        tts = TextToSpeech(this, this) // Initialize TTS
 
         wordAutoCompleteTextView = findViewById(R.id.wordEditText)
         searchButton = findViewById(R.id.searchButton)
         definitionsContainer = findViewById(R.id.definitionsContainer)
         resultsScrollView = findViewById(R.id.resultsScrollView)
         noResultsTextView = findViewById(R.id.noResultsTextView)
+        welcomeMessageContainer = findViewById(R.id.welcomeMessageContainer)
+        searchedWordContainer = findViewById(R.id.searchedWordContainer)
+        searchedWordTextView = findViewById(R.id.searchedWordTextView)
+        ttsButton = findViewById(R.id.ttsButton)
+
+        // Initial UI state: show welcome message
+        showWelcomeState()
 
         setupAutoComplete()
 
@@ -81,9 +93,49 @@ class MainActivity : AppCompatActivity() {
             wordAutoCompleteTextView.setText(selectedWord, false)
             performSearch(selectedWord)
         }
+
+        ttsButton.setOnClickListener {
+            currentWordToSpeak?.let { speakWord(it) }
+        }
     }
 
+    private fun showWelcomeState() {
+        welcomeMessageContainer.visibility = View.VISIBLE
+        searchedWordContainer.visibility = View.GONE
+        resultsScrollView.visibility = View.GONE
+        noResultsTextView.visibility = View.GONE
+    }
+
+    private fun showResultsState() {
+        welcomeMessageContainer.visibility = View.GONE
+        searchedWordContainer.visibility = View.VISIBLE
+        resultsScrollView.visibility = View.VISIBLE
+        noResultsTextView.visibility = View.GONE
+    }
+
+    private fun showNoResultsState(searchedWord: String) {
+        welcomeMessageContainer.visibility = View.GONE
+        searchedWordContainer.visibility = View.VISIBLE // Still show the searched word
+        searchedWordTextView.text = searchedWord.uppercase(Locale.getDefault())
+        currentWordToSpeak = searchedWord // Allow TTS for the word even if no defs
+        resultsScrollView.visibility = View.GONE
+        noResultsTextView.visibility = View.VISIBLE
+    }
+    
+    private fun showSearchingState(searchedWord: String) {
+        welcomeMessageContainer.visibility = View.GONE
+        searchedWordContainer.visibility = View.VISIBLE
+        searchedWordTextView.text = searchedWord.uppercase(Locale.getDefault())
+        currentWordToSpeak = searchedWord
+        resultsScrollView.visibility = View.GONE // Hide old results
+        noResultsTextView.visibility = View.GONE // Hide no results message
+        definitionsContainer.removeAllViews() // Clear previous results
+        // You could add a ProgressBar here dynamically if needed
+    }
+
+
     private fun setupAutoComplete() {
+        // ... (same as before)
         suggestionsAdapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, mutableListOf<String>())
         wordAutoCompleteTextView.setAdapter(suggestionsAdapter)
         wordAutoCompleteTextView.threshold = 1
@@ -112,6 +164,7 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
+
     private fun performSearch(wordToSearch: String) {
         val word = wordToSearch.trim()
         Log.d(TAG, "performSearch called with word: '$word'")
@@ -119,12 +172,15 @@ class MainActivity : AppCompatActivity() {
 
         if (word.isEmpty()) {
             Toast.makeText(this, getString(R.string.error_no_word), Toast.LENGTH_SHORT).show()
+            // Optionally revert to welcome state if input is cleared after a search
+            // if (definitionsContainer.childCount > 0 || noResultsTextView.isVisible) {
+            //     showWelcomeState()
+            // }
             return
         }
 
-        definitionsContainer.removeAllViews()
-        noResultsTextView.visibility = View.GONE
-        
+        showSearchingState(word) // Update UI to show searched word and "searching" state
+
         lifecycleScope.launch {
             Log.d(TAG, "Coroutine launched for DB query for '$word'")
             val wordEntryResult = withContext(Dispatchers.IO) {
@@ -135,15 +191,15 @@ class MainActivity : AppCompatActivity() {
             if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
                 if (wordEntryResult != null && wordEntryResult.definitions != null && wordEntryResult.definitions.isNotEmpty()) {
                     displayDefinitions(wordEntryResult.definitions)
-                    resultsScrollView.visibility = View.VISIBLE
-                    noResultsTextView.visibility = View.GONE
+                    showResultsState() // Ensure correct containers are visible
                     Log.d(TAG, "Successfully displayed meaning for '$word' from DB")
                 } else {
-                    definitionsContainer.removeAllViews()
-                    resultsScrollView.visibility = View.GONE
-                    noResultsTextView.visibility = View.VISIBLE
+                    showNoResultsState(word)
                     Log.d(TAG, "No definition found for '$word' in DB")
                 }
+                // Reset AutoCompleteTextView after search
+                wordAutoCompleteTextView.setText("", false) // Clear text, don't filter
+                // wordAutoCompleteTextView.hint = getString(R.string.hint_enter_word) // If you want to reset hint
             } else {
                 Log.w(TAG, "performSearch: Not updating UI, activity no longer started. Word: '$word'")
             }
@@ -151,12 +207,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun displayDefinitions(definitions: List<DefinitionDetail>) {
-        definitionsContainer.removeAllViews()
+        // definitionsContainer is already cleared in showSearchingState or by showResultsState logic
         val inflater = LayoutInflater.from(this)
 
         for (defDetail in definitions) {
             val itemView = inflater.inflate(R.layout.item_definition, definitionsContainer, false)
-
+            // ... (same population logic as before for itemView)
             val partOfSpeechTV = itemView.findViewById<TextView>(R.id.itemPartOfSpeechTextView)
             val definitionTV = itemView.findViewById<TextView>(R.id.itemDefinitionTextView)
             val examplesContainer = itemView.findViewById<LinearLayout>(R.id.itemExamplesContainer)
@@ -193,7 +249,41 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // --- TextToSpeech Implementation ---
+    override fun onInit(status: Int) {
+        if (status == TextToSpeech.SUCCESS) {
+            val result = tts?.setLanguage(Locale.US) // Set language, e.g., US English
+            if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                Log.e(TAG, "TTS: The Language specified is not supported!")
+                Toast.makeText(this, getString(R.string.tts_language_not_supported), Toast.LENGTH_SHORT).show()
+                ttsReady = false
+            } else {
+                Log.i(TAG, "TTS Initialization Successful.")
+                ttsReady = true
+                // If a word was searched before TTS was ready, speak it now
+                currentWordToSpeak?.let { if(searchedWordContainer.visibility == View.VISIBLE) speakWord(it) }
+            }
+        } else {
+            Log.e(TAG, "TTS Initialization Failed!")
+            Toast.makeText(this, getString(R.string.tts_init_failed), Toast.LENGTH_SHORT).show()
+            ttsReady = false
+        }
+    }
+
+    private fun speakWord(word: String) {
+        if (ttsReady && tts != null) {
+            tts?.speak(word, TextToSpeech.QUEUE_FLUSH, null, null)
+            Log.i(TAG, "TTS: Speaking '$word'")
+        } else {
+            Log.e(TAG, "TTS: Not ready or null, cannot speak '$word'")
+            if(!ttsReady) Toast.makeText(this, getString(R.string.tts_init_failed), Toast.LENGTH_SHORT).show()
+        }
+        currentWordToSpeak = word // Store it in case TTS wasn't ready on first call
+    }
+
+
     private fun hideKeyboardAndClearFocus() {
+        // ... (same as before)
         Log.d(TAG, "Attempting to hide keyboard and clear focus")
         val inputMethodManager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
         var focusedView = currentFocus
@@ -212,9 +302,20 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // Lifecycle methods
     override fun onStart() { super.onStart(); Log.d(TAG, "onStart called") }
     override fun onResume() { super.onResume(); Log.d(TAG, "onResume called") }
     override fun onPause() { super.onPause(); Log.d(TAG, "onPause called") }
     override fun onStop() { super.onStop(); Log.d(TAG, "onStop called") }
-    override fun onDestroy() { super.onDestroy(); Log.d(TAG, "onDestroy called") }
+
+    override fun onDestroy() {
+        // Shutdown TTS
+        if (tts != null) {
+            Log.d(TAG, "TTS Shutting down.")
+            tts!!.stop()
+            tts!!.shutdown()
+        }
+        super.onDestroy()
+        Log.d(TAG, "onDestroy called")
+    }
 }
