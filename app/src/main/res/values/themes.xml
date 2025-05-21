@@ -69,8 +69,8 @@
         <item name="android:textColor">@color/text_primary_dark</item>
     </style>
 
-    <style name="TextAppearance.App.Footer" parent="TextAppearance.Material3.BodySmall">
+    <style name="TextAppearance.App.Footer" parent="TextAppearance.Material3.Caption">
         <item name="android:textColor">@color/text_secondary_dark</item>
-        <item name="android:alpha">0.7</item> <!-- Make it slightly subtle -->
+        <item name="android:textSize">12sp</item>
     </style>
 </resources>
