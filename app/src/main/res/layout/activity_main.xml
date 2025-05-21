@@ -16,22 +16,23 @@
         android:id="@+id/wordInputLayout"
         style="@style/Widget.App.TextInputLayout"
         android:layout_width="0dp"
-        android:layout_height="wrap_content" <!-- Keep wrap_content here -->
+        android:layout_height="wrap_content"
+        android:hint="@string/hint_enter_word" <!-- Hint moved to TextInputLayout -->
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/searchButtonGuideline"
-        android:layout_marginEnd="8dp">
+        android:layout_marginEnd="8dp">  <!-- Closing > is correct here -->
 
         <com.google.android.material.textfield.MaterialAutoCompleteTextView
             android:id="@+id/wordEditText"
             style="@style/Widget.App.AutoCompleteTextView"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content" <!-- This inner height also matters -->
-            android:hint="@string/hint_enter_word"
+            android:layout_height="wrap_content"
             android:inputType="text"
             android:imeOptions="actionSearch"
             android:completionThreshold="1"/>
-    </com.google.android.material.textfield.TextInputLayout>
+            <!-- No hint attribute here -->
+    </com.google.android.material.textfield.TextInputLayout> <!-- Proper closing tag -->
 
     <!-- Guideline to help position the button nicely -->
     <androidx.constraintlayout.widget.Guideline
@@ -39,17 +40,17 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        app:layout_constraintGuide_end="90dp"/> <!-- Adjust this value (e.g., 90dp or 100dp) for button width -->
+        app:layout_constraintGuide_end="90dp"/>
 
     <Button
         android:id="@+id/searchButton"
         style="@style/Widget.App.Button"
-        android:layout_width="0dp" <!-- Make button width constrained -->
-        android:layout_height="0dp" <!-- Key for matching height -->
+        android:layout_width="0dp"
+        android:layout_height="0dp"
         android:text="@string/button_search"
         app:layout_constraintTop_toTopOf="@+id/wordInputLayout"
         app:layout_constraintBottom_toBottomOf="@+id/wordInputLayout"
-        app:layout_constraintStart_toEndOf="@id/searchButtonGuideline" <!-- Start after guideline -->
+        app:layout_constraintStart_toEndOf="@id/searchButtonGuideline"
         app:layout_constraintEnd_toEndOf="parent"
         android:layout_marginStart="8dp"/>
 
@@ -64,9 +65,9 @@
         app:layout_constraintTop_toBottomOf="@+id/wordInputLayout"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintBottom_toTopOf="@+id/footerTextView" <!-- Constrain to above footer -->
+        app:layout_constraintBottom_toTopOf="@+id/footerTextView"
         android:visibility="visible"
-        tools:visibility="gone"> <!-- Initially visible, tools:visibility for preview -->
+        tools:visibility="gone">
 
         <TextView
             android:id="@+id/welcomeTitleTextView"
@@ -133,11 +134,11 @@
         app:layout_constraintTop_toBottomOf="@+id/searchedWordContainer"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintBottom_toTopOf="@+id/footerTextView" <!-- Constrain to above footer -->
+        app:layout_constraintBottom_toTopOf="@+id/footerTextView"
         android:scrollbars="vertical"
         android:visibility="gone"
         android:clipToPadding="false"
-        android:paddingBottom="16dp" <!-- Internal padding for scroll content -->
+        android:paddingBottom="16dp"
         tools:visibility="visible">
 
         <LinearLayout
@@ -159,7 +160,7 @@
         app:layout_constraintTop_toBottomOf="@+id/searchedWordContainer"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintBottom_toTopOf="@+id/footerTextView" <!-- Constrain to above footer -->
+        app:layout_constraintBottom_toTopOf="@+id/footerTextView"
         android:layout_marginTop="16dp"
         tools:visibility="visible"/>
 
@@ -168,8 +169,8 @@
         android:id="@+id/footerTextView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Built with AI" <!-- Add your desired footer text -->
-        android:textAppearance="@style/TextAppearance.App.Footer" <!-- Create this style -->
+        android:text="@string/footer_text" <!-- Assuming you added footer_text to strings.xml -->
+        android:textAppearance="@style/TextAppearance.App.Footer"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
