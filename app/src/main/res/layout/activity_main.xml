@@ -168,7 +168,7 @@
         android:id="@+id/footerTextView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Built with AI"
+        android:text="© Mehar's Corp. All rights reserved."
         android:textAppearance="@style/TextAppearance.App.Footer"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
