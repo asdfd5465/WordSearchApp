@@ -1,8 +1,15 @@
 <resources>
-    <string name="app_name">Mini Dict</string>
+    <string name="app_name">Word Search</string> <!-- Or your new app name -->
     <string name="hint_enter_word">Enter a word</string>
     <string name="button_search">Go</string>
     <string name="error_fetching_meaning">Could not fetch meaning. Check connection or word.</string>
     <string name="error_no_word">Please enter a word.</string>
     <string name="no_definition_found">No definition found for this word.</string>
+
+    <!-- New Strings -->
+    <string name="welcome_message_title">Welcome!</string>
+    <string name="welcome_message_body">Type a word above and press Go to see its meaning, part of speech, examples, synonyms, and antonyms—offline and fast!</string>
+    <string name="tts_init_failed">Text-to-Speech initialization failed.</string>
+    <string name="tts_language_not_supported">This language is not supported for speech.</string>
+    <string name="speaker_icon_content_description">Pronounce word</string>
 </resources>
