@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Word Search</string> <!-- Or your new app name -->
+    <string name="app_name">Offline Dictionary Pro</string> <!-- Or your new app name -->
     <string name="hint_enter_word">Enter a word</string>
     <string name="button_search">Go</string>
     <string name="error_fetching_meaning">Could not fetch meaning. Check connection or word.</string>
