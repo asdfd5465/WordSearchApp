@@ -1,0 +1,130 @@
+name: Android CI Build and Sign AAB
+
+on:
+  workflow_dispatch: # Allows manual triggering
+  push:
+    branches: [ main ] # Or your default branch - consider changing for release
+    tags:
+      - 'v*.*.*'      # Trigger on version tags like v1.0.0, v1.0.1
+  # pull_request: # Usually, you don't build signed releases for PRs
+    # branches: [ main ]
+
+jobs:
+  build_and_sign_release_aab: # Renamed job for clarity
+    name: Build Signed Release AAB
+    runs-on: ubuntu-latest
+    # Only run this job for manual dispatch or version tags
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Fetch all history for all tags and branches to get version name from git tag
+          fetch-depth: 0 
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Set up Android SDK
+        run: |
+          echo "ANDROID_SDK_ROOT=${HOME}/android-sdk" >> $GITHUB_ENV
+          echo "ANDROID_HOME=${HOME}/android-sdk" >> $GITHUB_ENV # Legacy
+
+          SDK_CMD_TOOLS_PATH="${HOME}/android-sdk/cmdline-tools/latest/bin"
+          SDK_PLATFORM_TOOLS_PATH="${HOME}/android-sdk/platform-tools"
+
+          echo "$SDK_CMD_TOOLS_PATH" >> $GITHUB_PATH
+          echo "$SDK_PLATFORM_TOOLS_PATH" >> $GITHUB_PATH
+
+          export PATH="$SDK_CMD_TOOLS_PATH:$SDK_PLATFORM_TOOLS_PATH:$PATH"
+
+          mkdir -p ${HOME}/android-sdk/cmdline-tools
+          
+          CMDTOOLS_VERSION_ZIP="commandlinetools-linux-11076708_latest.zip" 
+          echo "Downloading Android Command-line Tools: ${CMDTOOLS_VERSION_ZIP}"
+          wget --quiet "https://dl.google.com/android/repository/${CMDTOOLS_VERSION_ZIP}" -O cmdline-tools.zip
+          echo "Unzipping Command-line Tools..."
+          unzip -q cmdline-tools.zip -d ${HOME}/android-sdk/cmdline-tools
+          mv ${HOME}/android-sdk/cmdline-tools/cmdline-tools ${HOME}/android-sdk/cmdline-tools/latest
+          rm cmdline-tools.zip
+          echo "Command-line Tools installed to ${HOME}/android-sdk/cmdline-tools/latest"
+
+          echo "Verifying sdkmanager..."
+          which sdkmanager
+          sdkmanager --version || echo "sdkmanager --version failed"
+
+          echo "Accepting SDK licenses..."
+          yes | sdkmanager --licenses > /dev/null || echo "Failed to accept licenses, retrying with --sdk_root"
+          yes | sdkmanager --licenses --sdk_root="${ANDROID_HOME}" > /dev/null || echo "Failed to accept licenses with --sdk_root"
+          
+          echo "Installing SDK packages..."
+          sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools" > /dev/null || echo "Failed to install SDK packages"
+          
+          echo "SDK Setup Complete. Installed packages:"
+          sdkmanager --list_installed || echo "sdkmanager --list_installed failed"
+        env:
+          ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT || format('{0}/android-sdk', env.HOME) }}
+
+      - name: Decode Keystore and Set Up Signing Variables
+        run: |
+          echo "Decoding keystore..."
+          KEYSTORE_PATH="${HOME}/release.keystore" 
+          echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 --decode > $KEYSTORE_PATH
+          
+          echo "Setting up signing environment variables..."
+          echo "MYAPP_RELEASE_STORE_FILE=$KEYSTORE_PATH" >> $GITHUB_ENV
+          echo "MYAPP_RELEASE_STORE_PASSWORD=${{ secrets.RELEASE_KEYSTORE_PASSWORD }}" >> $GITHUB_ENV
+          echo "MYAPP_RELEASE_KEY_ALIAS=${{ secrets.RELEASE_KEY_ALIAS }}" >> $GITHUB_ENV
+          echo "MYAPP_RELEASE_KEY_PASSWORD=${{ secrets.RELEASE_KEY_PASSWORD }}" >> $GITHUB_ENV
+          
+          echo "Keystore decoded and signing variables set for Gradle."
+          if [ -f "$KEYSTORE_PATH" ]; then
+            echo "Keystore file created at $KEYSTORE_PATH"
+          else
+            echo "ERROR: Keystore file NOT created at $KEYSTORE_PATH"
+            exit 1
+          fi
+
+      - name: Setup Gradle Caching
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Build Signed Release AAB # MODIFIED STEP NAME
+        run: |
+          echo "Starting Release AAB Build..."
+          # Clean task is optional as CI usually starts fresh, but doesn't hurt
+          ./gradlew clean bundleRelease # MODIFIED GRADLE TASK
+        env:
+          ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }} 
+          ANDROID_HOME: ${{ env.ANDROID_HOME }}
+
+      - name: Rename AAB with Version (Optional but Recommended) # MODIFIED STEP
+        if: startsWith(github.ref, 'refs/tags/') # Only rename if building from a tag
+        run: |
+          TAG_NAME=${GITHUB_REF#refs/tags/} # e.g., v1.0.0
+          AAB_NAME="app-release-${TAG_NAME}.aab" # MODIFIED EXTENSION
+          echo "Original AAB path: app/build/outputs/bundle/release/app-release.aab" # MODIFIED PATH
+          echo "New AAB name: ${AAB_NAME}"
+          mv app/build/outputs/bundle/release/app-release.aab app/build/outputs/bundle/release/${AAB_NAME} # MODIFIED PATH & EXTENSION
+          echo "AAB_NAME_WITH_VERSION=${AAB_NAME}" >> $GITHUB_ENV # Save for next step
+
+      - name: Upload Release AAB artifact # MODIFIED STEP NAME
+        uses: actions/upload-artifact@v4
+        with:
+          name: signed-release-aab # MODIFIED ARTIFACT NAME
+          # If renaming step ran, use the new name, otherwise use default
+          path: app/build/outputs/bundle/release/${{ env.AAB_NAME_WITH_VERSION || 'app-release.aab' }} # MODIFIED PATH & EXTENSION
+          if-no-files-found: error
