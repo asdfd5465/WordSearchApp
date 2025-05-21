@@ -1,4 +1,4 @@
-package com.example.wordsearchapp // Or your new package name: com.newcompany.newapp
+package com.offlinedictionary.pro
 
 import android.content.Context
 import android.os.Bundle
