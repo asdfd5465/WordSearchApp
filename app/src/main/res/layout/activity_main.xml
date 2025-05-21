@@ -81,11 +81,11 @@
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:layout_marginTop="20dp"
-        android:visibility="gone"  <!-- Initially hidden -->
+        android:visibility="gone"  
         app:layout_constraintTop_toBottomOf="@+id/wordInputLayout"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        tools:visibility="visible">
+        tools:visibility="visible"> <!-- Initially hidden -->
 
         <TextView
             android:id="@+id/searchedWordTextView"
@@ -119,8 +119,8 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
         android:scrollbars="vertical"
-        android:visibility="gone" <!-- Initially hidden -->
-        tools:visibility="visible">
+        android:visibility="gone" 
+        tools:visibility="visible"> <!-- Initially hidden -->
 
         <LinearLayout
             android:id="@+id/definitionsContainer"
