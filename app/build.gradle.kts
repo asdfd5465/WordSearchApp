@@ -1,5 +1,7 @@
-import java.util.Properties // Required for reading gradle.properties if used locally
-import java.io.FileInputStream // Required for reading gradle.properties if used locally
+// Add these imports at the VERY TOP of the file
+import java.io.File // For java.io.File
+import java.io.FileInputStream // For FileInputStream
+import java.util.Properties // Already there, but ensure it's at the top
 
 plugins {
     id("com.android.application")
@@ -7,12 +9,12 @@ plugins {
 }
 
 // Function to load properties from gradle.properties (optional for local builds)
-fun loadProperties(projectDir: java.io.File, fileName: String = "gradle.properties"): Properties {
+fun loadProperties(projectDir: File, fileName: String = "gradle.properties"): Properties { // Changed java.io.File to File
     val properties = Properties()
-    val propertiesFile = java.io.File(projectDir, fileName)
+    val propertiesFile = File(projectDir, fileName) // Changed java.io.File to File
     if (propertiesFile.exists()) {
-        FileInputStream(propertiesFile).use {
-            properties.load(it)
+        FileInputStream(propertiesFile).use { inputStream -> // Explicitly name the lambda parameter
+            properties.load(inputStream)
         }
     }
     return properties
@@ -24,13 +26,10 @@ fun loadProperties(projectDir: java.io.File, fileName: String = "gradle.properti
 val localAppProperties = loadProperties(project.projectDir) // If gradle.properties is in app module root
 
 android {
-    namespace = "com.offlinedictionary.pro"
+    namespace = "com.offlinedictionary.pro" // Your actual package name
     compileSdk = 34
 
     // --- SIGNING CONFIGURATION START ---
-    // Retrieve signing configuration from environment variables (for CI)
-    // or from gradle.properties (for local builds, if you set them up there).
-    // The names MYAPP_... match what we set in GitHub Actions ENV and can be used in local gradle.properties
     val storeFileVar = System.getenv("MYAPP_RELEASE_STORE_FILE") ?: localAppProperties.getProperty("MYAPP_RELEASE_STORE_FILE")
     val storePasswordVar = System.getenv("MYAPP_RELEASE_STORE_PASSWORD") ?: localAppProperties.getProperty("MYAPP_RELEASE_STORE_PASSWORD")
     val keyAliasVar = System.getenv("MYAPP_RELEASE_KEY_ALIAS") ?: localAppProperties.getProperty("MYAPP_RELEASE_KEY_ALIAS")
@@ -38,60 +37,50 @@ android {
 
     signingConfigs {
         create("release") {
-            // Check if all necessary signing information is present
             if (storeFileVar != null && storePasswordVar != null && keyAliasVar != null && keyPasswordVar != null) {
-                val keystore = java.io.File(storeFileVar)
+                val keystore = File(storeFileVar) // Changed java.io.File to File
                 if (keystore.exists()) {
                     storeFile = keystore
                     storePassword = storePasswordVar
-                    this.keyAlias = keyAliasVar // Use 'this.keyAlias' to avoid conflict
+                    this.keyAlias = keyAliasVar
                     this.keyPassword = keyPasswordVar
                     println("Release signing configured with: $storeFileVar")
                 } else {
                     println("WARNING: Keystore file not found at '$storeFileVar'. Release build will not be signed properly.")
-                    // To prevent accidental unsigned release, you might want to throw an error here in CI
-                    // if (System.getenv("CI") == "true") {
-                    //     throw GradleException("Keystore file not found in CI environment.")
-                    // }
                 }
             } else {
-                println("WARNING: Release signing information not fully provided (keystore path, passwords, or alias missing). Release build may not be signed.")
-                // In CI, this block should ideally not be hit if secrets are set up correctly.
-                // For local builds, this means gradle.properties isn't set up for release signing.
+                println("WARNING: Release signing information not fully provided. Release build may not be signed.")
             }
         }
     }
     // --- SIGNING CONFIGURATION END ---
 
     defaultConfig {
-        applicationId = "com.offlinedictionary.pro"
+        applicationId = "com.offlinedictionary.pro" // Your actual package name
         minSdk = 23
         targetSdk = 34
-        versionCode = 1 // Stable Release
-        versionName = "1.0.0" // As per your requirement
+        versionCode = 1
+        versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildFeatures {
-        buildConfig = true // Needed for BuildConfig.APPLICATION_ID in DatabaseHelper
+        buildConfig = true
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = true // Recommended for release
-            isShrinkResources = true // Recommended for release
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // Apply the signing configuration to the release build type
             signingConfig = signingConfigs.getByName("release")
         }
         debug {
             isMinifyEnabled = false
-            // For debug builds, Android Studio/Gradle automatically signs with a debug key.
-            // No explicit signingConfig needed here unless you want to override it.
         }
     }
     compileOptions {
@@ -116,9 +105,6 @@ dependencies {
 
     // Gson for parsing JSON strings from DB columns (examples, synonyms, etc.)
     implementation("com.google.code.gson:gson:2.10.1")
-
-    // OkHttp was already commented out, which is correct if not used.
-    // implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
