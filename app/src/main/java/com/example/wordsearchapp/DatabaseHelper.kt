@@ -1,4 +1,4 @@
-package com.example.wordsearchapp // Use your actual package name
+package com.offlinedictionary.pro
 
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
