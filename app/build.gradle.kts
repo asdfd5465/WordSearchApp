@@ -41,7 +41,7 @@ android {
         applicationId = "com.offlinedictionary.pro"
         minSdk = 23
         targetSdk = 34
-        versionCode = 1.0 // Stable Release
+        versionCode = 1 // Stable Release
         versionName = "1.1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
