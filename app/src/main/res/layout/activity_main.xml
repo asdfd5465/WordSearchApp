@@ -23,7 +23,6 @@
             app:title="@string/app_name"
             app:titleTextColor="?attr/colorOnPrimary"
             android:background="?attr/colorPrimary" />
-            
     </com.google.android.material.appbar.AppBarLayout>
 
     <!-- Content Area constrained below AppBar -->
@@ -37,7 +36,7 @@
         app:layout_constraintTop_toBottomOf="@id/appBarLayout"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
+        app:layout_constraintEnd_toEndOf="parent"> <!-- Ensure this opening tag is correctly closed with a > -->
 
         <!-- Block 1: Input Area -->
         <com.google.android.material.textfield.TextInputLayout
@@ -94,7 +93,7 @@
             app:layout_constraintBottom_toTopOf="@+id/footerTextView"
             android:visibility="visible"
             tools:visibility="gone">
-            <!-- Welcome TextViews as before -->
+
             <TextView
                 android:id="@+id/welcomeTitleTextView"
                 android:layout_width="wrap_content"
@@ -139,8 +138,8 @@
 
             <ImageButton
                 android:id="@+id/ttsButton"
-                android:layout_width="40dp" 
-                android:layout_height="40dp" 
+                android:layout_width="40dp"
+                android:layout_height="40dp"
                 android:src="@drawable/ic_speaker"
                 app:tint="@color/app_accent_color"
                 android:background="?attr/selectableItemBackgroundBorderless"
@@ -151,13 +150,13 @@
             <View
                 android:layout_width="0dp"
                 android:layout_height="0dp"
-                android:layout_weight="1"/> <!-- Spacer -->
+                android:layout_weight="1"/>
 
             <ImageButton
                 android:id="@+id/favoriteButton"
-                android:layout_width="40dp" 
-                android:layout_height="40dp" 
-                android:src="@drawable/ic_favorite_outline" 
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:src="@drawable/ic_favorite_outline"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/add_to_favorites_description"
                 android:padding="6dp"/>
@@ -186,7 +185,6 @@
                 android:orientation="vertical"/>
         </ScrollView>
 
-        <!-- No Results TextView -->
         <TextView
             android:id="@+id/noResultsTextView"
             android:layout_width="0dp"
@@ -202,7 +200,6 @@
             android:layout_marginTop="16dp"
             tools:visibility="visible"/>
 
-        <!-- Footer -->
         <TextView
             android:id="@+id/footerTextView"
             android:layout_width="wrap_content"
@@ -213,5 +210,7 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             android:layout_marginBottom="8dp"/>
-    </androidx.constraintlayout.widget.ConstraintLayout>
-</androidx.constraintlayout.widget.ConstraintLayout>
+
+    </androidx.constraintlayout.widget.ConstraintLayout> <!-- Closing tag for the nested ConstraintLayout -->
+
+</androidx.constraintlayout.widget.ConstraintLayout> <!-- Closing tag for the root ConstraintLayout -->
