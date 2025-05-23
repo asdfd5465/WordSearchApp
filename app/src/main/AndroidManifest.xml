@@ -11,7 +11,7 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.WordSearchApp" <!-- Ensure this is Theme.WordSearchApp if it defines NoActionBar -->
+        android:theme="@style/Theme.WordSearchApp" 
         tools:targetApi="31">
 
         <!-- <meta-data
@@ -31,7 +31,7 @@
         <activity
             android:name=".FavoritesActivity"
             android:label="@string/title_activity_favorites"
-            android:parentActivityName=".MainActivity" > <!-- For Up navigation -->
+            android:parentActivityName=".MainActivity" > 
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value=".MainActivity" />
