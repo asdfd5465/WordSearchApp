@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:paddingStart="16dp"
+    android:paddingEnd="8dp"
+    android:paddingTop="12dp"
+    android:paddingBottom="12dp"
+    android:gravity="center_vertical"
+    android:background="?attr/selectableItemBackground">
+
+    <TextView
+        android:id="@+id/favoriteWordTextView"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:textAppearance="?attr/textAppearanceListItem"
+        android:textColor="@color/text_primary_dark"
+        tools:text="Intelligence" />
+
+    <ImageButton
+        android:id="@+id/removeFavoriteButton"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:src="@drawable/ic_favorite_filled"
+        app:tint="@color/app_accent_color"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/remove_from_favorites_description"
+        android:padding="8dp"
+        xmlns:app="http://schemas.android.com/apk/res-auto" />
+</LinearLayout>
