@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
+    
     <uses-permission android:name="android.permission.INTERNET" />
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -11,12 +12,14 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.WordSearchApp" 
+        android:theme="@style/Theme.WordSearchApp"
         tools:targetApi="31">
+        
         <!-- Optional: AdMob App ID if you're ready -->
         <!-- <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
             android:value="ca-app-pub-YOUR_ADMOB_APP_ID"/> -->
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -26,13 +29,15 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
         <activity
             android:name=".FavoritesActivity"
             android:label="@string/title_activity_favorites"
-            android:parentActivityName=".MainActivity" >
+            android:parentActivityName=".MainActivity">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value=".MainActivity" />
         </activity>
     </application>
+
 </manifest>
