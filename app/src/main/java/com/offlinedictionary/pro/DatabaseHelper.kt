@@ -1,14 +1,13 @@
 package com.offlinedictionary.pro // Your package name
-
-import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import android.util.Log
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
+import com.google.gson.Gson // Ensure this is imported if used
+import com.google.gson.reflect.TypeToken // Ensure this is imported if used
 import java.io.FileOutputStream
 import java.io.IOException
+import android.content.ContentValues // Add this if not present
 
 class DatabaseHelper(private val context: Context) :
     SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {
