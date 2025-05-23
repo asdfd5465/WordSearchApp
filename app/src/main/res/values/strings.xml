@@ -1,17 +1,24 @@
 <resources>
-    <string name="app_name">Offline Dictionary Pro</string> <!-- Or your new app name -->
+    <string name="app_name">Offline Dictionary Pro</string>
     <string name="hint_enter_word">Enter a word</string>
     <string name="button_search">Go</string>
-    <string name="error_fetching_meaning">Could not fetch meaning. Check connection or word.</string>
+    <!-- error_fetching_meaning might not be needed if fully offline, but keep for now -->
+    <string name="error_fetching_meaning">Could not fetch meaning.</string>
     <string name="error_no_word">Please enter a word.</string>
     <string name="no_definition_found">No definition found for this word.</string>
-
-    <!-- New Strings -->
     <string name="welcome_message_title">Welcome!</string>
     <string name="welcome_message_body">Type a word above and press Go to see its meaning, part of speech, examples, synonyms, and antonyms—offline and fast!</string>
     <string name="tts_init_failed">Text-to-Speech initialization failed.</string>
     <string name="tts_language_not_supported">This language is not supported for speech.</string>
     <string name="speaker_icon_content_description">Pronounce word</string>
-    
+    <string name="footer_text">Built with AI</string>
+
+    <!-- New Strings for Favorites -->
+    <string name="action_favorites">Favorites</string>
+    <string name="title_activity_favorites">Favorite Words</string>
+    <string name="favorites_empty_message">Your favorite words will appear here!\nTap the heart icon next to a searched word to add it to your list for quick revision.</string>
+    <string name="add_to_favorites_description">Add to favorites</string>
+    <string name="remove_from_favorites_description">Remove from favorites</string>
+    <string name="word_favorited_message">%s added to favorites</string>
+    <string name="word_unfavorited_message">%s removed from favorites</string>
 </resources>
-<!-- string name="footer_text">Built with AI</string -->
