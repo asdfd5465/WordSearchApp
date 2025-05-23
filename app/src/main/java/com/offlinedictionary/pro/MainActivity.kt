@@ -1,14 +1,38 @@
 package com.offlinedictionary.pro // Your package name
 
 // ... other imports ...
-import android.app.Activity
+import android.app.Activity // For ActivityResultLauncher
+import android.content.Context
 import android.content.Intent
+import android.os.Bundle
 import android.speech.tts.TextToSpeech
-import android.view.Menu // For Toolbar Menu
-import android.view.MenuItem // For Toolbar Menu
-import androidx.activity.result.ActivityResultLauncher // For Activity Result
-import androidx.activity.result.contract.ActivityResultContracts // For Activity Result
-import com.google.android.material.appbar.MaterialToolbar // For Toolbar
+import android.text.Editable
+import android.text.TextWatcher
+import android.util.Log
+import android.view.LayoutInflater // Needed for displayDefinitions
+import android.view.Menu
+import android.view.MenuItem
+import android.view.View
+import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputMethodManager
+import android.widget.ArrayAdapter
+import android.widget.Button
+import android.widget.ImageButton
+import android.widget.LinearLayout
+import android.widget.ScrollView
+import android.widget.TextView
+import android.widget.Toast
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import com.google.android.material.appbar.MaterialToolbar // Added for toolbar
+import com.google.android.material.textfield.MaterialAutoCompleteTextView
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.util.Locale
 
 class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
