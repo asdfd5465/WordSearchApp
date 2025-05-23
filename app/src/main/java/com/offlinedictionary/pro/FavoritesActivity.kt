@@ -10,13 +10,14 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageButton
 import android.widget.TextView
+import android.widget.Toast // Add this
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.appbar.MaterialToolbar
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope // Using GlobalScope for simplicity, consider LifecycleScope
+import kotlinx.coroutines.GlobalScope // Or switch to lifecycleScope/viewModelScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
