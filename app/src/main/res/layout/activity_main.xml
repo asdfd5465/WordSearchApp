@@ -6,7 +6,6 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".MainActivity">
-
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/appBarLayout"
         android:layout_width="match_parent"
@@ -15,7 +14,6 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
-
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/mainToolbar"
             android:layout_width="match_parent"
@@ -24,7 +22,6 @@
             app:titleTextColor="?attr/colorOnPrimary"
             android:background="?attr/colorPrimary" />
     </com.google.android.material.appbar.AppBarLayout>
-
     <!-- Content Area constrained below AppBar -->
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="0dp"
@@ -36,8 +33,8 @@
         app:layout_constraintTop_toBottomOf="@id/appBarLayout"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"> <!-- Ensure this opening tag is correctly closed with a > -->
-
+        app:layout_constraintEnd_toEndOf="parent">
+        <!-- Ensure this opening tag is correctly closed with a > -->
         <!-- Block 1: Input Area -->
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/wordInputLayout"
@@ -48,7 +45,6 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toStartOf="@+id/searchButtonGuideline"
             android:layout_marginEnd="8dp">
-
             <com.google.android.material.textfield.MaterialAutoCompleteTextView
                 android:id="@+id/wordEditText"
                 style="@style/Widget.App.AutoCompleteTextView"
@@ -59,14 +55,12 @@
                 android:imeOptions="actionSearch"
                 android:completionThreshold="1"/>
         </com.google.android.material.textfield.TextInputLayout>
-
         <androidx.constraintlayout.widget.Guideline
             android:id="@+id/searchButtonGuideline"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="vertical"
             app:layout_constraintGuide_end="90dp"/>
-
         <Button
             android:id="@+id/searchButton"
             style="@style/Widget.App.Button"
@@ -78,7 +72,6 @@
             app:layout_constraintStart_toEndOf="@id/searchButtonGuideline"
             app:layout_constraintEnd_toEndOf="parent"
             android:layout_marginStart="8dp"/>
-
         <!-- Welcome Message / Initial State -->
         <LinearLayout
             android:id="@+id/welcomeMessageContainer"
@@ -93,7 +86,6 @@
             app:layout_constraintBottom_toTopOf="@+id/footerTextView"
             android:visibility="visible"
             tools:visibility="gone">
-
             <TextView
                 android:id="@+id/welcomeTitleTextView"
                 android:layout_width="wrap_content"
@@ -112,7 +104,6 @@
                 android:gravity="center_horizontal"
                 android:lineSpacingMultiplier="1.2"/>
         </LinearLayout>
-
         <!-- Block 2: Searched Word Display -->
         <LinearLayout
             android:id="@+id/searchedWordContainer"
@@ -126,7 +117,6 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             tools:visibility="visible">
-
             <TextView
                 android:id="@+id/searchedWordTextView"
                 android:layout_width="wrap_content"
@@ -135,7 +125,6 @@
                 android:textColor="@color/text_primary_dark"
                 android:textStyle="bold"
                 tools:text="INTELLIGENCE"/>
-
             <ImageButton
                 android:id="@+id/ttsButton"
                 android:layout_width="40dp"
@@ -146,12 +135,10 @@
                 android:contentDescription="@string/speaker_icon_content_description"
                 android:padding="6dp"
                 android:layout_marginStart="8dp"/>
-
             <View
                 android:layout_width="0dp"
                 android:layout_height="0dp"
                 android:layout_weight="1"/>
-
             <ImageButton
                 android:id="@+id/favoriteButton"
                 android:layout_width="40dp"
@@ -161,7 +148,6 @@
                 android:contentDescription="@string/add_to_favorites_description"
                 android:padding="6dp"/>
         </LinearLayout>
-
         <!-- Block 3: Definitions -->
         <ScrollView
             android:id="@+id/resultsScrollView"
@@ -184,7 +170,6 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical"/>
         </ScrollView>
-
         <TextView
             android:id="@+id/noResultsTextView"
             android:layout_width="0dp"
@@ -199,7 +184,6 @@
             app:layout_constraintBottom_toTopOf="@+id/footerTextView"
             android:layout_marginTop="16dp"
             tools:visibility="visible"/>
-
         <TextView
             android:id="@+id/footerTextView"
             android:layout_width="wrap_content"
@@ -210,7 +194,7 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             android:layout_marginBottom="8dp"/>
-
-    </androidx.constraintlayout.widget.ConstraintLayout> <!-- Closing tag for the nested ConstraintLayout -->
-
-</androidx.constraintlayout.widget.ConstraintLayout> <!-- Closing tag for the root ConstraintLayout -->
+    </androidx.constraintlayout.widget.ConstraintLayout>
+    <!-- Closing tag for the nested ConstraintLayout -->
+</androidx.constraintlayout.widget.ConstraintLayout>
+<!-- Closing tag for the root ConstraintLayout -->
