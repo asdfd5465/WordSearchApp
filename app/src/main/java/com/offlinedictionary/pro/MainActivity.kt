@@ -1,3 +1,4 @@
+// File Path: app/src/main/java/com/offlinedictionary/pro/MainActivity.kt
 package com.offlinedictionary.pro
 
 import android.app.Activity
@@ -59,7 +60,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private lateinit var favoritesActivityLauncher: ActivityResultLauncher<Intent>
 
     companion object {
-        const val EXTRA_SEARCH_WORD = "extra_search_word_from_favorites"
+        const val EXTRA_SEARCH_WORD_FROM_FAVORITES = "extra_search_word_from_favorites"
     }
 
     private val TAG = "WordSearchAppMainActivity"
@@ -133,19 +134,18 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
         favoritesActivityLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == Activity.RESULT_OK) {
-                val wordFromFavorites = result.data?.getStringExtra(EXTRA_SEARCH_WORD)
+                val wordFromFavorites = result.data?.getStringExtra(EXTRA_SEARCH_WORD_FROM_FAVORITES)
                 if (wordFromFavorites != null) {
                     Log.d(TAG, "Received word from FavoritesActivity: $wordFromFavorites")
                     wordAutoCompleteTextView.setText(wordFromFavorites, false)
-                    // MODIFICATION: Post the performSearch to the main thread's message queue
-                    // This can help if the UI isn't fully ready after returning from another activity.
-                    wordAutoCompleteTextView.post {
-                        performSearch(wordFromFavorites)
-                    }
-                } else if (result.data?.getBooleanExtra(FavoritesActivity.RESULT_FAVORITES_MODIFIED, false) == true) {
+                    performSearch(wordFromFavorites) // This line should trigger the search
+                }
+                // Check if favorites were modified to update heart icon if current word was affected
+                // This is important if the user un-favorited the currently displayed word from the favorites screen
+                if (result.data?.getBooleanExtra(FavoritesActivity.RESULT_FAVORITES_MODIFIED_FLAG, false) == true) {
                     Log.d(TAG, "Favorites list modified, updating current word's favorite icon if visible.")
                     currentSearchedWord?.let {
-                        lifecycleScope.launch { // Ensure DB access is off main thread
+                        lifecycleScope.launch {
                             val isFavoriteNow = withContext(Dispatchers.IO) { dbHelper.isWordFavorite(it) }
                             updateFavoriteIcon(isFavoriteNow)
                         }
@@ -209,7 +209,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         noResultsTextView.visibility = View.VISIBLE
         Log.d(TAG, "UI State: No Results for $searchedWord")
     }
-
+    
     private fun showSearchingState(searchedWord: String) {
         currentSearchedWord = searchedWord
         welcomeMessageContainer.visibility = View.GONE
@@ -220,9 +220,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             updateFavoriteIcon(isFavorite)
         }
         currentWordToSpeak = searchedWord
-        resultsScrollView.visibility = View.GONE // Clear previous results visually
-        noResultsTextView.visibility = View.GONE // Hide no results message
-        definitionsContainer.removeAllViews() // Clear definitions from container
+        resultsScrollView.visibility = View.GONE
+        noResultsTextView.visibility = View.GONE
+        definitionsContainer.removeAllViews()
         Log.d(TAG, "UI State: Searching for $searchedWord")
     }
 
@@ -244,7 +244,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                         }
                         suggestionsAdapter.clear()
                         suggestionsAdapter.addAll(suggestions)
-                        suggestionsAdapter.filter.filter(null)
+                        suggestionsAdapter.filter.filter(null) 
                         Log.d(TAG, "Fetched suggestions for '$query': $suggestions")
                     }
                 } else {
@@ -257,7 +257,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private fun performSearch(wordToSearch: String) {
         val word = wordToSearch.trim()
-        Log.d(TAG, "performSearch ENTERED with word: '$word'. Current UI state: Welcome visible? ${welcomeMessageContainer.visibility == View.VISIBLE}")
+        Log.d(TAG, "performSearch called with word: '$word'")
         hideKeyboardAndClearFocus()
 
         if (word.isEmpty()) {
@@ -284,11 +284,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 } else {
                     showNoResultsState(word)
                 }
-                // Do not clear the text here if it came from favorites click,
-                // it's already set. If it was a normal search, it's fine.
-                // Consider if wordAutoCompleteTextView.setText("", false) is always desired after every search.
-                // For now, let's keep it as is, but it might be slightly better to clear it only for Go button/IME search.
-                wordAutoCompleteTextView.setText("", false)
+                // Do not clear wordAutoCompleteTextView here if the search was triggered from favorites
+                // It's already set by the launcher callback
             } else {
                 Log.w(TAG, "performSearch: Not updating UI, activity no longer started. Word: '$word'")
             }
@@ -296,8 +293,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     private fun displayDefinitions(definitions: List<DefinitionDetail>) {
-        // definitionsContainer is cleared in showSearchingState
         val inflater = LayoutInflater.from(this)
+        definitionsContainer.removeAllViews() // Ensure it's clear before adding new views
 
         for (defDetail in definitions) {
             val itemView = inflater.inflate(R.layout.item_definition, definitionsContainer, false)
@@ -341,11 +338,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             } else {
                 Log.i(TAG, "TTS Initialization Successful.")
                 ttsReady = true
-                currentWordToSpeak?.let {
-                    if(searchedWordContainer.visibility == View.VISIBLE && it.equals(searchedWordTextView.text.toString(), ignoreCase = true) ) {
-                        // Condition to auto-speak if needed, currently commented out in original
-                    }
-                }
             }
         } else {
             Log.e(TAG, "TTS Initialization Failed!")
@@ -402,14 +394,14 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
         focusedView?.let {
             inputMethodManager.hideSoftInputFromWindow(it.windowToken, 0)
-            // Only clear focus if it's the AutoCompleteTextView to prevent clearing focus from other elements if needed
-            if (it == wordAutoCompleteTextView) {
-                it.clearFocus()
-            }
+            // it.clearFocus() // Clearing focus might prevent AutoCompleteTextView from showing dropdown sometimes
             Log.d(TAG, "Keyboard hidden for view: $it")
         } ?: run {
             Log.d(TAG, "No view currently has focus to hide keyboard from or clear.")
         }
+        // if (::wordAutoCompleteTextView.isInitialized && wordAutoCompleteTextView != focusedView) {
+        // wordAutoCompleteTextView.clearFocus()
+        // }
     }
 
     override fun onStart() { super.onStart(); Log.d(TAG, "onStart called") }
