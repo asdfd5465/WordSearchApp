@@ -1,4 +1,3 @@
-// File Path: app/src/main/java/com/offlinedictionary/pro/MainActivity.kt
 package com.offlinedictionary.pro
 
 import android.app.Activity
@@ -54,13 +53,14 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private var tts: TextToSpeech? = null
     private var ttsReady = false
     private var currentWordToSpeak: String? = null
-    private var currentSearchedWord: String? = null
+    private var currentSearchedWordForUI: String? = null // Tracks what's displayed
     private var currentWordIsFavorite: Boolean = false
 
     private lateinit var favoritesActivityLauncher: ActivityResultLauncher<Intent>
 
     companion object {
-        const val EXTRA_SEARCH_WORD_FROM_FAVORITES = "extra_search_word_from_favorites"
+        const val EXTRA_SEARCH_WORD = "extra_search_word_from_favorites" // Key for passing word
+        const val RESULT_FAVORITES_MODIFIED_FLAG = "favorites_modified_flag" // Key for modification flag
     }
 
     private val TAG = "WordSearchAppMainActivity"
@@ -100,7 +100,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         setupAutoComplete()
 
         searchButton.setOnClickListener {
-            Log.d(TAG, "Search button clicked")
+            Log.d(TAG, "Search button clicked via GO")
             val wordToSearch = wordAutoCompleteTextView.text.toString()
             performSearch(wordToSearch)
         }
@@ -111,9 +111,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 val wordToSearch = wordAutoCompleteTextView.text.toString()
                 performSearch(wordToSearch)
                 true
-            } else {
-                false
-            }
+            } else { false }
         }
         wordAutoCompleteTextView.setOnItemClickListener { parent, _, position, _ ->
             val selectedWord = parent.getItemAtPosition(position) as String
@@ -123,34 +121,39 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
 
         ttsButton.setOnClickListener {
-            currentSearchedWord?.let { speakWord(it) }
+            currentSearchedWordForUI?.let { speakWord(it) }
         }
 
         favoriteButton.setOnClickListener {
-            currentSearchedWord?.let { word ->
+            currentSearchedWordForUI?.let { word ->
                 toggleFavoriteStatus(word)
             }
         }
 
         favoritesActivityLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            Log.d(TAG, "ActivityResult from Favorites: resultCode = ${result.resultCode}")
             if (result.resultCode == Activity.RESULT_OK) {
-                val wordFromFavorites = result.data?.getStringExtra(EXTRA_SEARCH_WORD_FROM_FAVORITES)
+                val wordFromFavorites = result.data?.getStringExtra(EXTRA_SEARCH_WORD)
+                val favoritesModified = result.data?.getBooleanExtra(RESULT_FAVORITES_MODIFIED_FLAG, false) ?: false
+
                 if (wordFromFavorites != null) {
-                    Log.d(TAG, "Received word from FavoritesActivity: $wordFromFavorites")
-                    wordAutoCompleteTextView.setText(wordFromFavorites, false)
-                    performSearch(wordFromFavorites) // This line should trigger the search
-                }
-                // Check if favorites were modified to update heart icon if current word was affected
-                // This is important if the user un-favorited the currently displayed word from the favorites screen
-                if (result.data?.getBooleanExtra(FavoritesActivity.RESULT_FAVORITES_MODIFIED_FLAG, false) == true) {
-                    Log.d(TAG, "Favorites list modified, updating current word's favorite icon if visible.")
-                    currentSearchedWord?.let {
+                    Log.i(TAG, "Received word from FavoritesActivity: '$wordFromFavorites', performing search.")
+                    // Do not clear wordAutoCompleteTextView here, user expects to see the word they clicked
+                    // wordAutoCompleteTextView.setText(wordFromFavorites, false) // Not needed if we don't clear it later in performSearch
+                    performSearch(wordFromFavorites)
+                } else if (favoritesModified) {
+                    Log.i(TAG, "Favorites list modified, updating current word's favorite icon if visible.")
+                    currentSearchedWordForUI?.let { currentWord ->
                         lifecycleScope.launch {
-                            val isFavoriteNow = withContext(Dispatchers.IO) { dbHelper.isWordFavorite(it) }
+                            val isFavoriteNow = withContext(Dispatchers.IO) { dbHelper.isWordFavorite(currentWord) }
                             updateFavoriteIcon(isFavoriteNow)
                         }
                     }
+                } else {
+                    Log.d(TAG, "ActivityResult: RESULT_OK but no specific action data.")
                 }
+            } else {
+                Log.d(TAG, "ActivityResult: Not RESULT_OK (resultCode = ${result.resultCode})")
             }
         }
     }
@@ -172,7 +175,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     private fun showWelcomeState() {
-        currentSearchedWord = null
+        currentSearchedWordForUI = null
         welcomeMessageContainer.visibility = View.VISIBLE
         searchedWordContainer.visibility = View.GONE
         resultsScrollView.visibility = View.GONE
@@ -180,72 +183,57 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         Log.d(TAG, "UI State: Welcome")
     }
 
-    private fun showResultsState(searchedWord: String) {
-        currentSearchedWord = searchedWord
-        welcomeMessageContainer.visibility = View.GONE
-        searchedWordContainer.visibility = View.VISIBLE
+    private fun updateUiForNewWordSearch(searchedWord: String) {
+        currentSearchedWordForUI = searchedWord // Update the word being displayed
         searchedWordTextView.text = searchedWord.uppercase(Locale.getDefault())
+        currentWordToSpeak = searchedWord // For TTS
         lifecycleScope.launch {
             val isFavorite = withContext(Dispatchers.IO) { dbHelper.isWordFavorite(searchedWord) }
             updateFavoriteIcon(isFavorite)
         }
-        currentWordToSpeak = searchedWord
-        resultsScrollView.visibility = View.VISIBLE
-        noResultsTextView.visibility = View.GONE
-        Log.d(TAG, "UI State: Results for $searchedWord")
     }
 
-    private fun showNoResultsState(searchedWord: String) {
-        currentSearchedWord = searchedWord
+    private fun showResultsState() {
         welcomeMessageContainer.visibility = View.GONE
         searchedWordContainer.visibility = View.VISIBLE
-        searchedWordTextView.text = searchedWord.uppercase(Locale.getDefault())
-        lifecycleScope.launch {
-            val isFavorite = withContext(Dispatchers.IO) { dbHelper.isWordFavorite(searchedWord) }
-            updateFavoriteIcon(isFavorite)
-        }
-        currentWordToSpeak = searchedWord
+        resultsScrollView.visibility = View.VISIBLE
+        noResultsTextView.visibility = View.GONE
+        Log.d(TAG, "UI State: Results shown for $currentSearchedWordForUI")
+    }
+
+    private fun showNoResultsState() {
+        welcomeMessageContainer.visibility = View.GONE
+        searchedWordContainer.visibility = View.VISIBLE // Still show the searched word
         resultsScrollView.visibility = View.GONE
         noResultsTextView.visibility = View.VISIBLE
-        Log.d(TAG, "UI State: No Results for $searchedWord")
+        Log.d(TAG, "UI State: No Results for $currentSearchedWordForUI")
     }
     
-    private fun showSearchingState(searchedWord: String) {
-        currentSearchedWord = searchedWord
+    private fun showSearchingState(wordBeingSearched: String) {
+        updateUiForNewWordSearch(wordBeingSearched) // This sets currentSearchedWordForUI & updates icon
         welcomeMessageContainer.visibility = View.GONE
         searchedWordContainer.visibility = View.VISIBLE
-        searchedWordTextView.text = searchedWord.uppercase(Locale.getDefault())
-        lifecycleScope.launch {
-            val isFavorite = withContext(Dispatchers.IO) { dbHelper.isWordFavorite(searchedWord) }
-            updateFavoriteIcon(isFavorite)
-        }
-        currentWordToSpeak = searchedWord
-        resultsScrollView.visibility = View.GONE
+        resultsScrollView.visibility = View.GONE // Hide old results
         noResultsTextView.visibility = View.GONE
-        definitionsContainer.removeAllViews()
-        Log.d(TAG, "UI State: Searching for $searchedWord")
+        definitionsContainer.removeAllViews() // Clear previous definitions
+        Log.d(TAG, "UI State: Searching for $wordBeingSearched")
     }
 
     private fun setupAutoComplete() {
         suggestionsAdapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, mutableListOf<String>())
         wordAutoCompleteTextView.setAdapter(suggestionsAdapter)
         wordAutoCompleteTextView.threshold = 1
-
         wordAutoCompleteTextView.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-
             override fun afterTextChanged(s: Editable?) {
                 val query = s.toString().trim()
                 if (query.length >= wordAutoCompleteTextView.threshold) {
                     lifecycleScope.launch {
-                        val suggestions = withContext(Dispatchers.IO) {
-                            dbHelper.getWordSuggestions(query)
-                        }
+                        val suggestions = withContext(Dispatchers.IO) { dbHelper.getWordSuggestions(query) }
                         suggestionsAdapter.clear()
                         suggestionsAdapter.addAll(suggestions)
-                        suggestionsAdapter.filter.filter(null) 
-                        Log.d(TAG, "Fetched suggestions for '$query': $suggestions")
+                        suggestionsAdapter.filter.filter(null)
                     }
                 } else {
                     suggestionsAdapter.clear()
@@ -257,35 +245,34 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private fun performSearch(wordToSearch: String) {
         val word = wordToSearch.trim()
-        Log.d(TAG, "performSearch called with word: '$word'")
+        Log.i(TAG, "performSearch called with word: '$word'")
         hideKeyboardAndClearFocus()
 
         if (word.isEmpty()) {
             Toast.makeText(this, getString(R.string.error_no_word), Toast.LENGTH_SHORT).show()
-            if (resultsScrollView.visibility == View.VISIBLE || noResultsTextView.visibility == View.VISIBLE) {
-                showWelcomeState()
+            if (searchedWordContainer.visibility == View.VISIBLE) { // If results were shown
+                showWelcomeState() // Revert to welcome if search is cleared
             }
             return
         }
 
-        showSearchingState(word)
+        showSearchingState(word) // Updates UI for the new search
 
         lifecycleScope.launch {
-            Log.d(TAG, "Coroutine launched for DB query for '$word'")
+            Log.d(TAG, "performSearch: Coroutine launched for DB query for '$word'")
             val wordEntryResult = withContext(Dispatchers.IO) {
                 dbHelper.getWordDefinition(word)
             }
-            Log.d(TAG, "DB query finished for '$word', result found: ${wordEntryResult != null}")
+            Log.d(TAG, "performSearch: DB query finished for '$word', result found: ${wordEntryResult != null}")
 
             if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
                 if (wordEntryResult != null && wordEntryResult.definitions != null && wordEntryResult.definitions.isNotEmpty()) {
                     displayDefinitions(wordEntryResult.definitions)
-                    showResultsState(word)
+                    showResultsState() // Call after definitions are ready
                 } else {
-                    showNoResultsState(word)
+                    showNoResultsState() // Call if no results
                 }
-                // Do not clear wordAutoCompleteTextView here if the search was triggered from favorites
-                // It's already set by the launcher callback
+                // wordAutoCompleteTextView.setText("", false) // Decide if you want to clear input after search
             } else {
                 Log.w(TAG, "performSearch: Not updating UI, activity no longer started. Word: '$word'")
             }
@@ -293,11 +280,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     private fun displayDefinitions(definitions: List<DefinitionDetail>) {
+        // definitionsContainer is already cleared in showSearchingState
         val inflater = LayoutInflater.from(this)
-        definitionsContainer.removeAllViews() // Ensure it's clear before adding new views
-
         for (defDetail in definitions) {
             val itemView = inflater.inflate(R.layout.item_definition, definitionsContainer, false)
+            // ... (population logic as before)
             val partOfSpeechTV = itemView.findViewById<TextView>(R.id.itemPartOfSpeechTextView)
             val definitionTV = itemView.findViewById<TextView>(R.id.itemDefinitionTextView)
             val examplesContainer = itemView.findViewById<LinearLayout>(R.id.itemExamplesContainer)
@@ -324,6 +311,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 antonymsContainer.visibility = View.VISIBLE
                 antonymsTV.text = ants.joinToString(", ")
             } ?: run { antonymsContainer.visibility = View.GONE }
+
             definitionsContainer.addView(itemView)
         }
     }
@@ -388,20 +376,14 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private fun hideKeyboardAndClearFocus() {
         Log.d(TAG, "Attempting to hide keyboard and clear focus")
         val inputMethodManager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-        var focusedView = currentFocus
-        if (focusedView == null) {
-            focusedView = window.decorView
+        val focusedView = currentFocus ?: window.decorView
+        inputMethodManager.hideSoftInputFromWindow(focusedView.windowToken, 0)
+        focusedView.clearFocus() // Clear focus from the view that had it (or decor view)
+        Log.d(TAG, "Keyboard hidden and focus possibly cleared.")
+        // Specifically clear focus from wordAutoCompleteTextView if it's initialized
+        if (::wordAutoCompleteTextView.isInitialized) {
+            wordAutoCompleteTextView.clearFocus()
         }
-        focusedView?.let {
-            inputMethodManager.hideSoftInputFromWindow(it.windowToken, 0)
-            // it.clearFocus() // Clearing focus might prevent AutoCompleteTextView from showing dropdown sometimes
-            Log.d(TAG, "Keyboard hidden for view: $it")
-        } ?: run {
-            Log.d(TAG, "No view currently has focus to hide keyboard from or clear.")
-        }
-        // if (::wordAutoCompleteTextView.isInitialized && wordAutoCompleteTextView != focusedView) {
-        // wordAutoCompleteTextView.clearFocus()
-        // }
     }
 
     override fun onStart() { super.onStart(); Log.d(TAG, "onStart called") }
