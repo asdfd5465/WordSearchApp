@@ -59,7 +59,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private lateinit var favoritesActivityLauncher: ActivityResultLauncher<Intent>
 
     companion object {
-        const val EXTRA_SEARCH_WORD = "extra_search_word_from_favorites" // Made more specific
+        const val EXTRA_SEARCH_WORD = "extra_search_word_from_favorites"
     }
 
     private val TAG = "WordSearchAppMainActivity"
@@ -71,20 +71,15 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
         mainToolbar = findViewById(R.id.mainToolbar)
         setSupportActionBar(mainToolbar)
-        // Remove default title provided by label, we set it via app:title or programmatically if needed
-        supportActionBar?.setDisplayShowTitleEnabled(true) // Ensure title is shown if set in XML
+        supportActionBar?.setDisplayShowTitleEnabled(true)
 
-        // Make the toolbar title clickable to go to "home" (welcome state)
         mainToolbar.setOnClickListener {
-            // Check if we are already in the welcome state to avoid unnecessary actions
             if (welcomeMessageContainer.visibility != View.VISIBLE) {
                 showWelcomeState()
-                wordAutoCompleteTextView.setText("", false) // Clear search input
-                // Optionally, clear focus and hide keyboard
+                wordAutoCompleteTextView.setText("", false)
                 hideKeyboardAndClearFocus()
             }
         }
-
 
         dbHelper = DatabaseHelper(this)
         tts = TextToSpeech(this, this)
@@ -142,13 +137,18 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 if (wordFromFavorites != null) {
                     Log.d(TAG, "Received word from FavoritesActivity: $wordFromFavorites")
                     wordAutoCompleteTextView.setText(wordFromFavorites, false)
-                    performSearch(wordFromFavorites)
+                    // MODIFICATION: Post the performSearch to the main thread's message queue
+                    // This can help if the UI isn't fully ready after returning from another activity.
+                    wordAutoCompleteTextView.post {
+                        performSearch(wordFromFavorites)
+                    }
                 } else if (result.data?.getBooleanExtra(FavoritesActivity.RESULT_FAVORITES_MODIFIED, false) == true) {
                     Log.d(TAG, "Favorites list modified, updating current word's favorite icon if visible.")
                     currentSearchedWord?.let {
-                        // Re-check favorite status from DB as it might have changed
-                        val isFavoriteNow = dbHelper.isWordFavorite(it)
-                        updateFavoriteIcon(isFavoriteNow)
+                        lifecycleScope.launch { // Ensure DB access is off main thread
+                            val isFavoriteNow = withContext(Dispatchers.IO) { dbHelper.isWordFavorite(it) }
+                            updateFavoriteIcon(isFavoriteNow)
+                        }
                     }
                 }
             }
@@ -185,7 +185,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         welcomeMessageContainer.visibility = View.GONE
         searchedWordContainer.visibility = View.VISIBLE
         searchedWordTextView.text = searchedWord.uppercase(Locale.getDefault())
-        lifecycleScope.launch { // Fetch favorite status from DB
+        lifecycleScope.launch {
             val isFavorite = withContext(Dispatchers.IO) { dbHelper.isWordFavorite(searchedWord) }
             updateFavoriteIcon(isFavorite)
         }
@@ -200,7 +200,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         welcomeMessageContainer.visibility = View.GONE
         searchedWordContainer.visibility = View.VISIBLE
         searchedWordTextView.text = searchedWord.uppercase(Locale.getDefault())
-        lifecycleScope.launch { // Fetch favorite status from DB
+        lifecycleScope.launch {
             val isFavorite = withContext(Dispatchers.IO) { dbHelper.isWordFavorite(searchedWord) }
             updateFavoriteIcon(isFavorite)
         }
@@ -209,20 +209,20 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         noResultsTextView.visibility = View.VISIBLE
         Log.d(TAG, "UI State: No Results for $searchedWord")
     }
-    
+
     private fun showSearchingState(searchedWord: String) {
         currentSearchedWord = searchedWord
         welcomeMessageContainer.visibility = View.GONE
         searchedWordContainer.visibility = View.VISIBLE
         searchedWordTextView.text = searchedWord.uppercase(Locale.getDefault())
-        lifecycleScope.launch { // Fetch favorite status from DB
+        lifecycleScope.launch {
             val isFavorite = withContext(Dispatchers.IO) { dbHelper.isWordFavorite(searchedWord) }
             updateFavoriteIcon(isFavorite)
         }
         currentWordToSpeak = searchedWord
-        resultsScrollView.visibility = View.GONE
-        noResultsTextView.visibility = View.GONE
-        definitionsContainer.removeAllViews()
+        resultsScrollView.visibility = View.GONE // Clear previous results visually
+        noResultsTextView.visibility = View.GONE // Hide no results message
+        definitionsContainer.removeAllViews() // Clear definitions from container
         Log.d(TAG, "UI State: Searching for $searchedWord")
     }
 
@@ -244,14 +244,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                         }
                         suggestionsAdapter.clear()
                         suggestionsAdapter.addAll(suggestions)
-                        suggestionsAdapter.filter.filter(null) 
+                        suggestionsAdapter.filter.filter(null)
                         Log.d(TAG, "Fetched suggestions for '$query': $suggestions")
                     }
                 } else {
-                    if (query.isEmpty() && definitionsContainer.childCount == 0 && noResultsTextView.visibility == View.GONE) {
-                        // If input is cleared and no results/welcome shown, show welcome
-                        // This condition might need refinement based on desired UX
-                    }
                     suggestionsAdapter.clear()
                     suggestionsAdapter.notifyDataSetChanged()
                 }
@@ -261,12 +257,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private fun performSearch(wordToSearch: String) {
         val word = wordToSearch.trim()
-        Log.d(TAG, "performSearch called with word: '$word'")
+        Log.d(TAG, "performSearch ENTERED with word: '$word'. Current UI state: Welcome visible? ${welcomeMessageContainer.visibility == View.VISIBLE}")
         hideKeyboardAndClearFocus()
 
         if (word.isEmpty()) {
             Toast.makeText(this, getString(R.string.error_no_word), Toast.LENGTH_SHORT).show()
-            // If search is empty and results were shown, revert to welcome state
             if (resultsScrollView.visibility == View.VISIBLE || noResultsTextView.visibility == View.VISIBLE) {
                 showWelcomeState()
             }
@@ -289,6 +284,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 } else {
                     showNoResultsState(word)
                 }
+                // Do not clear the text here if it came from favorites click,
+                // it's already set. If it was a normal search, it's fine.
+                // Consider if wordAutoCompleteTextView.setText("", false) is always desired after every search.
+                // For now, let's keep it as is, but it might be slightly better to clear it only for Go button/IME search.
                 wordAutoCompleteTextView.setText("", false)
             } else {
                 Log.w(TAG, "performSearch: Not updating UI, activity no longer started. Word: '$word'")
@@ -297,6 +296,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     private fun displayDefinitions(definitions: List<DefinitionDetail>) {
+        // definitionsContainer is cleared in showSearchingState
         val inflater = LayoutInflater.from(this)
 
         for (defDetail in definitions) {
@@ -342,9 +342,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 Log.i(TAG, "TTS Initialization Successful.")
                 ttsReady = true
                 currentWordToSpeak?.let {
-                    if(searchedWordContainer.visibility == View.VISIBLE && it == searchedWordTextView.text.toString().lowercase(Locale.getDefault())) {
-                        // Speak only if the word currently shown is the one we intended to speak
-                       // speakWord(it) // Auto-speak can be annoying, let user click
+                    if(searchedWordContainer.visibility == View.VISIBLE && it.equals(searchedWordTextView.text.toString(), ignoreCase = true) ) {
+                        // Condition to auto-speak if needed, currently commented out in original
                     }
                 }
             }
@@ -403,13 +402,13 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
         focusedView?.let {
             inputMethodManager.hideSoftInputFromWindow(it.windowToken, 0)
-            it.clearFocus()
-            Log.d(TAG, "Keyboard hidden and focus cleared for view: $it")
+            // Only clear focus if it's the AutoCompleteTextView to prevent clearing focus from other elements if needed
+            if (it == wordAutoCompleteTextView) {
+                it.clearFocus()
+            }
+            Log.d(TAG, "Keyboard hidden for view: $it")
         } ?: run {
             Log.d(TAG, "No view currently has focus to hide keyboard from or clear.")
-        }
-        if (::wordAutoCompleteTextView.isInitialized && wordAutoCompleteTextView != focusedView) {
-            wordAutoCompleteTextView.clearFocus()
         }
     }
 
@@ -423,7 +422,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             Log.d(TAG, "TTS Shutting down.")
             tts!!.stop()
             tts!!.shutdown()
-            tts = null // Good practice to nullify
+            tts = null
         }
         super.onDestroy()
         Log.d(TAG, "onDestroy called")
