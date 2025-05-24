@@ -1,5 +1,7 @@
 package com.offlinedictionary.pro // Your package name
 
+package com.offlinedictionary.pro // Your package name
+
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
@@ -20,6 +22,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope // Or switch to lifecycleScope/viewModelScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+
+// Your class FavoritesActivity : AppCompatActivity() { ... }
 
 class FavoritesActivity : AppCompatActivity() {
 
