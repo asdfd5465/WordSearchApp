@@ -1,13 +1,15 @@
-package com.offlinedictionary.pro // Your package name
+package com.offlinedictionary.pro
+
+import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import android.util.Log
-import com.google.gson.Gson // Ensure this is imported if used
-import com.google.gson.reflect.TypeToken // Ensure this is imported if used
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import java.io.FileOutputStream
 import java.io.IOException
-import android.content.ContentValues // Add this if not present
+import java.io.File // Added import for java.io.File
 
 class DatabaseHelper(private val context: Context) :
     SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {
@@ -16,71 +18,106 @@ class DatabaseHelper(private val context: Context) :
 
     companion object {
         private const val DATABASE_NAME = "dictionary.db"
-        private const val DATABASE_VERSION = 1 // Increment if schema changes (e.g., adding is_favorite)
-        private val DB_PATH = "/data/data/${BuildConfig.APPLICATION_ID}/databases/"
+        private const val DATABASE_VERSION = 1
+        // Corrected DB_PATH to use context.applicationInfo.dataDir for robustness
+        private fun getDbPath(context: Context): String =
+            context.applicationInfo.dataDir + "/databases/"
+
         private const val TAG = "DatabaseHelper"
 
         // Table and Column Names
         private const val TABLE_WORDS = "words"
         private const val COLUMN_WORD_TEXT = "word_text"
-        private const val COLUMN_IS_FAVORITE = "is_favorite" // New column
+        private const val COLUMN_IS_FAVORITE = "is_favorite"
 
         private const val TABLE_DEFINITIONS = "definitions"
-        // ... other definition columns
     }
 
     init {
+        // Ensure the database is copied when the helper is initialized
         copyDatabaseFromAssets()
     }
 
-    // ... copyDatabaseFromAssets() and checkDataBase() remain the same
+    @Synchronized // Ensure only one thread copies the DB
+    private fun copyDatabaseFromAssets() {
+        val dbPathWithDbName = getDbPath(context) + DATABASE_NAME
+        if (checkDataBase(dbPathWithDbName)) {
+            Log.i(TAG, "Database already exists at $dbPathWithDbName.")
+            return
+        }
+
+        // Ensure the databases directory exists.
+        val dbDir = File(getDbPath(context))
+        if (!dbDir.exists()) {
+            if (!dbDir.mkdirs()) {
+                Log.e(TAG, "Failed to create database directory: ${dbDir.absolutePath}")
+                throw IOException("Failed to create database directory: ${dbDir.absolutePath}")
+            }
+        }
+        
+        // By calling this method, an empty database will be created into the default system path
+        // of your application so we are gonna be able to overwrite that database with our database.
+        this.readableDatabase 
+        this.close() // Close the empty DB so we can overwrite. IMPORTANT!
+
+        try {
+            Log.i(TAG, "Database does not exist. Copying from assets to $dbPathWithDbName...")
+            val myInput = context.assets.open(DATABASE_NAME)
+            val myOutput = FileOutputStream(dbPathWithDbName)
+            val buffer = ByteArray(1024)
+            var length: Int
+            while (myInput.read(buffer).also { length = it } > 0) {
+                myOutput.write(buffer, 0, length)
+            }
+            myOutput.flush()
+            myOutput.close()
+            myInput.close()
+            Log.i(TAG, "Database copied successfully from assets.")
+        } catch (e: IOException) {
+            Log.e(TAG, "Error copying database from assets", e)
+            throw Error("Error copying database: ${e.message}")
+        }
+    }
+
+    private fun checkDataBase(dbPathWithDbName: String): Boolean {
+        var checkDB: SQLiteDatabase? = null
+        try {
+            val dbFile = File(dbPathWithDbName)
+            if (dbFile.exists()) {
+                checkDB = SQLiteDatabase.openDatabase(dbPathWithDbName, null, SQLiteDatabase.OPEN_READONLY)
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Database doesn't exist yet or error opening for check: ${e.message}")
+        }
+        checkDB?.close()
+        return checkDB != null
+    }
+
 
     override fun onCreate(db: SQLiteDatabase?) {
         Log.i(TAG, "onCreate called - this should not happen if DB is copied correctly.")
-        // If you reach here, it means the DB wasn't copied and SQLite is creating it.
-        // You'd need to define table creation SQL here, but our primary path is copying.
-        // For safety, you could include the table creation SQL your Python script uses.
-        // Example (ensure this matches your Python script's table creation EXACTLY):
-        /*
-        val sqlCreateWordsTable = """
-            CREATE TABLE IF NOT EXISTS $TABLE_WORDS (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                $COLUMN_WORD_TEXT TEXT NOT NULL UNIQUE COLLATE NOCASE,
-                $COLUMN_IS_FAVORITE INTEGER NOT NULL DEFAULT 0
-            );
-            """
-        val sqlCreateDefinitionsTable = """
-            CREATE TABLE IF NOT EXISTS $TABLE_DEFINITIONS (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                $COLUMN_WORD_TEXT TEXT NOT NULL,
-                part_of_speech TEXT,
-                definition_text TEXT,
-                examples_json TEXT,
-                synonyms_json TEXT,
-                antonyms_json TEXT,
-                FOREIGN KEY ($COLUMN_WORD_TEXT) REFERENCES $TABLE_WORDS ($COLUMN_WORD_TEXT)
-            );
-            """
-        db?.execSQL(sqlCreateWordsTable)
-        db?.execSQL(sqlCreateDefinitionsTable)
-        db?.execSQL("CREATE INDEX IF NOT EXISTS idx_word_text ON $TABLE_WORDS ($COLUMN_WORD_TEXT);")
-        db?.execSQL("CREATE INDEX IF NOT EXISTS idx_definition_word_text ON $TABLE_DEFINITIONS ($COLUMN_WORD_TEXT);")
-        */
+        // If for some reason copy fails and SQLiteOpenHelper creates the DB,
+        // you might want to log an error or attempt to recopy.
+        // The tables are expected to be in the copied DB.
     }
-
 
     override fun onUpgrade(db: SQLiteDatabase?, oldVersion: Int, newVersion: Int) {
-        Log.i(TAG, "onUpgrade called from version $oldVersion to $newVersion")
-        // Handle DB schema migrations. For a simple addition like is_favorite,
-        // if you ship a new DB, you might just delete the old one and recopy.
-        // Or, if oldVersion < NEW_VERSION_WHERE_FAVORITE_ADDED:
-        // db?.execSQL("ALTER TABLE $TABLE_WORDS ADD COLUMN $COLUMN_IS_FAVORITE INTEGER NOT NULL DEFAULT 0;")
-        // For simplicity now, if you update the DB in assets, increment DATABASE_VERSION,
-        // and the copy logic might need adjustment to handle overwriting if version changed.
-        // Or, just uninstall/reinstall the app to get the new DB.
+        Log.w(TAG, "onUpgrade called from version $oldVersion to $newVersion. " +
+                   "Current implementation will require app reinstall for DB schema changes if asset DB is updated.")
+        // For a simple app with a pre-populated DB from assets, a common strategy for
+        // schema changes is to increment DATABASE_VERSION, and then in copyDatabaseFromAssets,
+        // you might add logic to delete the old DB if the version in assets is newer.
+        // Or, for simplicity, instruct users to reinstall if the DB schema changes significantly.
+        // If you were creating tables here, you'd drop and recreate them:
+        // db?.execSQL("DROP TABLE IF EXISTS $TABLE_WORDS")
+        // db?.execSQL("DROP TABLE IF EXISTS $TABLE_DEFINITIONS")
+        // onCreate(db)
     }
 
-    // ... getWordSuggestions, getWordDefinition, wordExists remain similar but ensure they use constants
+    // --- Query Methods ---
+    // (getWordSuggestions, getWordDefinition, wordExists, isWordFavorite, setWordFavoriteStatus, getFavoriteWords)
+    // Ensure these methods are correctly defined as provided in the previous response.
+    // I'll re-paste them here for completeness.
 
     fun getWordSuggestions(query: String, limit: Int = 10): List<String> {
         val suggestions = mutableListOf<String>()
@@ -89,13 +126,27 @@ class DatabaseHelper(private val context: Context) :
             "SELECT $COLUMN_WORD_TEXT FROM $TABLE_WORDS WHERE $COLUMN_WORD_TEXT LIKE ? ORDER BY $COLUMN_WORD_TEXT LIMIT ?",
             arrayOf("$query%", limit.toString())
         )
-        // ... (rest of the method is the same) ...
-        try { /* ... */ } catch (e: Exception) { /* ... */ } finally { cursor.close() }
+        try {
+            if (cursor.moveToFirst()) {
+                do {
+                    val wordTextColumnIndex = cursor.getColumnIndex(COLUMN_WORD_TEXT)
+                    if (wordTextColumnIndex != -1) {
+                        suggestions.add(cursor.getString(wordTextColumnIndex))
+                    } else {
+                        Log.w(TAG, "Column '$COLUMN_WORD_TEXT' not found in words table for suggestions.")
+                    }
+                } while (cursor.moveToNext())
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting word suggestions for '$query'", e)
+        } finally {
+            cursor.close()
+        }
+        Log.d(TAG, "Suggestions for '$query': $suggestions")
         return suggestions
     }
 
     fun getWordDefinition(word: String): WordDefinitionEntry? {
-        // ... (same logic, just ensure column names are correct if you used constants for them) ...
         val db = this.readableDatabase
         var wordEntry: WordDefinitionEntry? = null
         val definitionsList = mutableListOf<DefinitionDetail>()
@@ -104,8 +155,48 @@ class DatabaseHelper(private val context: Context) :
             "SELECT part_of_speech, definition_text, examples_json, synonyms_json, antonyms_json FROM $TABLE_DEFINITIONS WHERE $COLUMN_WORD_TEXT = ?",
             arrayOf(word)
         )
-        // ... (rest of the parsing logic is the same) ...
-        try { /* ... */ } catch (e: Exception) { /* ... */ } finally { cursor.close() }
+        try {
+            if (cursor.moveToFirst()) {
+                do {
+                    val posColumnIndex = cursor.getColumnIndex("part_of_speech")
+                    val defTextColumnIndex = cursor.getColumnIndex("definition_text")
+                    val examplesJsonColumnIndex = cursor.getColumnIndex("examples_json")
+                    val synonymsJsonColumnIndex = cursor.getColumnIndex("synonyms_json")
+                    val antonymsJsonColumnIndex = cursor.getColumnIndex("antonyms_json")
+
+                    val partOfSpeech = if (posColumnIndex != -1) cursor.getString(posColumnIndex) else null
+                    val definitionText = if (defTextColumnIndex != -1) cursor.getString(defTextColumnIndex) else null
+
+                    val examplesJson = if (examplesJsonColumnIndex != -1) cursor.getString(examplesJsonColumnIndex) else "[]"
+                    val synonymsJson = if (synonymsJsonColumnIndex != -1) cursor.getString(synonymsJsonColumnIndex) else "[]"
+                    val antonymsJson = if (antonymsJsonColumnIndex != -1) cursor.getString(antonymsJsonColumnIndex) else "[]"
+
+                    val listType = object : TypeToken<List<String>>() {}.type
+                    val examples: List<String> = gson.fromJson(examplesJson, listType)
+                    val synonyms: List<String> = gson.fromJson(synonymsJson, listType)
+                    val antonyms: List<String> = gson.fromJson(antonymsJson, listType)
+
+                    definitionsList.add(
+                        DefinitionDetail(
+                            partOfSpeech = partOfSpeech,
+                            definition = definitionText,
+                            examples = examples,
+                            synonyms = synonyms,
+                            antonyms = antonyms
+                        )
+                    )
+                } while (cursor.moveToNext())
+
+                if (definitionsList.isNotEmpty()) {
+                    wordEntry = WordDefinitionEntry(word = word, definitions = definitionsList)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting word definition for '$word'", e)
+        } finally {
+            cursor.close()
+        }
+        Log.d(TAG, "Definition for '$word': ${wordEntry != null}")
         return wordEntry
     }
 
@@ -115,12 +206,18 @@ class DatabaseHelper(private val context: Context) :
             "SELECT 1 FROM $TABLE_WORDS WHERE $COLUMN_WORD_TEXT = ? LIMIT 1",
             arrayOf(word)
         )
-        // ... (rest of the method is the same) ...
-        var exists = false; try { /* ... */ } catch (e: Exception) { /* ... */ } finally { cursor.close() }; return exists
+        var exists = false
+        try {
+            exists = cursor.count > 0
+        } catch (e: Exception) {
+            Log.e(TAG, "Error checking if word exists: '$word'", e)
+        } finally {
+            cursor.close()
+        }
+        Log.d(TAG, "Word '$word' exists: $exists")
+        return exists
     }
 
-
-    // --- New Favorite Methods ---
     fun isWordFavorite(word: String): Boolean {
         val db = this.readableDatabase
         var isFavorite = false
@@ -133,6 +230,8 @@ class DatabaseHelper(private val context: Context) :
                 val isFavoriteColumnIndex = cursor.getColumnIndex(COLUMN_IS_FAVORITE)
                 if (isFavoriteColumnIndex != -1) {
                     isFavorite = cursor.getInt(isFavoriteColumnIndex) == 1
+                } else {
+                     Log.w(TAG, "Column '$COLUMN_IS_FAVORITE' not found in words table.")
                 }
             }
         } catch (e: Exception) {
@@ -154,16 +253,11 @@ class DatabaseHelper(private val context: Context) :
             if (success) {
                 Log.d(TAG, "Word '$word' favorite status set to $isFavorite")
             } else {
-                Log.w(TAG, "Failed to update favorite status for word '$word' (word might not exist in 'words' table or status was already set)")
-                 // It's possible the word isn't in the words table if your dictionary.json processing
-                 // didn't add all searchable words there. Or the word key in definitions isn't in words.
-                 // For robustness, you might want to ensure the word exists in 'words' table before setting favorite.
-                 // However, if it was searched and definitions found, it should exist.
+                Log.w(TAG, "Failed to update favorite status for word '$word' (word might not exist or status unchanged)")
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error setting favorite status for word '$word'", e)
         }
-        // db.close() // SQLiteOpenHelper handles this
         return success
     }
 
@@ -180,6 +274,8 @@ class DatabaseHelper(private val context: Context) :
                     val wordTextColumnIndex = cursor.getColumnIndex(COLUMN_WORD_TEXT)
                     if (wordTextColumnIndex != -1) {
                         favoriteWords.add(cursor.getString(wordTextColumnIndex))
+                    } else {
+                        Log.w(TAG, "Column '$COLUMN_WORD_TEXT' not found in words table for favorites.")
                     }
                 } while (cursor.moveToNext())
             }
@@ -191,4 +287,4 @@ class DatabaseHelper(private val context: Context) :
         Log.d(TAG, "Fetched favorite words: $favoriteWords")
         return favoriteWords
     }
-}
+    }
