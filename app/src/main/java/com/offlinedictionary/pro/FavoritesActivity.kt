@@ -1,6 +1,5 @@
-package com.offlinedictionary.pro // THIS MUST BE THE FIRST NON-COMMENT LINE
+package com.offlinedictionary.pro
 
-// ALL IMPORTS MUST COME IMMEDIATELY AFTER 'package'
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
@@ -11,18 +10,17 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageButton
 import android.widget.TextView
-import android.widget.Toast // Ensure this import is present
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope // Changed from GlobalScope
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.appbar.MaterialToolbar
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope 
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-// THEN THE CLASS DEFINITION
 class FavoritesActivity : AppCompatActivity() {
 
     private lateinit var favoritesRecyclerView: RecyclerView
@@ -32,10 +30,11 @@ class FavoritesActivity : AppCompatActivity() {
     private val TAG = "FavoritesActivity"
 
     companion object {
-        const val REQUEST_CODE_FAVORITES = 1001 // Used by MainActivity to launch
-        const val RESULT_FAVORITES_MODIFIED = "favorites_modified_result_key" // Key for intent extra
+        // REQUEST_CODE_FAVORITES is not strictly needed with ActivityResultLauncher
+        const val RESULT_FAVORITES_MODIFIED = "favorites_list_modified_flag" // Made it more descriptive
     }
-    private var favoritesWereModifiedDuringThisSession = false // Renamed for clarity
+    private var favoritesWereModifiedDuringThisSession = false
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -57,9 +56,11 @@ class FavoritesActivity : AppCompatActivity() {
     private fun setupRecyclerView() {
         favoritesAdapter = FavoritesAdapter(
             onItemClick = { word ->
+                Log.d(TAG, "Favorite item clicked: $word")
                 val resultIntent = Intent()
-                resultIntent.putExtra(MainActivity.EXTRA_SEARCH_WORD, word)
+                resultIntent.putExtra(MainActivity.EXTRA_SEARCH_WORD, word) // Use constant from MainActivity
                 setResult(Activity.RESULT_OK, resultIntent)
+                favoritesWereModifiedDuringThisSession = true // Technically, navigating away means session modified intent
                 finish()
             },
             onRemoveFavoriteClick = { word ->
@@ -73,7 +74,7 @@ class FavoritesActivity : AppCompatActivity() {
 
     private fun loadFavoriteWords() {
         Log.d(TAG, "Loading favorite words...")
-        GlobalScope.launch(Dispatchers.Main) {
+        lifecycleScope.launch { // Use lifecycleScope for Activity
             val favWords = withContext(Dispatchers.IO) {
                 dbHelper.getFavoriteWords()
             }
@@ -92,42 +93,45 @@ class FavoritesActivity : AppCompatActivity() {
 
     private fun removeWordFromFavorites(word: String) {
         Log.d(TAG, "Attempting to remove '$word' from favorites.")
-        GlobalScope.launch(Dispatchers.Main) {
+        lifecycleScope.launch { // Use lifecycleScope
             val success = withContext(Dispatchers.IO) {
                 dbHelper.setWordFavoriteStatus(word, false)
             }
             if (success) {
                 Toast.makeText(this@FavoritesActivity, getString(R.string.word_unfavorited_message, word), Toast.LENGTH_SHORT).show()
-                favoritesWereModifiedDuringThisSession = true // Mark that changes were made
-                loadFavoriteWords() // Refresh the list
+                favoritesWereModifiedDuringThisSession = true
+                loadFavoriteWords()
             } else {
-                Toast.makeText(this@FavoritesActivity, "Could not remove favorite.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@FavoritesActivity, "Could not remove $word from favorites.", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         if (item.itemId == android.R.id.home) {
-            onBackPressedDispatcher.onBackPressed() 
+            onBackPressedDispatcher.onBackPressed()
             return true
         }
         return super.onOptionsItemSelected(item)
     }
 
-    // Send result back if favorites were modified
     override fun finish() {
         if (favoritesWereModifiedDuringThisSession) {
             val resultIntent = Intent()
-            resultIntent.putExtra(RESULT_FAVORITES_MODIFIED, true)
-            setResult(Activity.RESULT_OK, resultIntent) // Indicate success and that data might have changed
+            // If just modification status is needed, no need to send back a word unless one was clicked
+            // If a word was clicked to navigate back, EXTRA_SEARCH_WORD is already set
+            if (intent.getStringExtra(MainActivity.EXTRA_SEARCH_WORD) == null) { // Only set if not already set by item click
+                resultIntent.putExtra(RESULT_FAVORITES_MODIFIED, true)
+            }
+            setResult(Activity.RESULT_OK, resultIntent) // Always RESULT_OK if modified or word selected
         } else {
-            setResult(Activity.RESULT_CANCELED) // No changes relevant to caller
+            setResult(Activity.RESULT_CANCELED)
         }
+        Log.d(TAG, "Finishing FavoritesActivity. Modified: $favoritesWereModifiedDuringThisSession")
         super.finish()
     }
 }
 
-// Adapter for the RecyclerView (ensure this is complete as provided before)
 class FavoritesAdapter(
     private val onItemClick: (String) -> Unit,
     private val onRemoveFavoriteClick: (String) -> Unit
@@ -136,7 +140,7 @@ class FavoritesAdapter(
     private var words: List<String> = emptyList()
 
     fun submitList(newWords: List<String>) {
-        words = newWords
+        words = newWords.toList() // Create a new list to ensure immutability for adapter
         notifyDataSetChanged()
     }
 
@@ -163,7 +167,10 @@ class FavoritesAdapter(
         fun bind(word: String) {
             wordTextView.text = word
             itemView.setOnClickListener { onItemClick(word) }
-            removeButton.setOnClickListener { onRemoveFavoriteClick(word) }
+            removeButton.setOnClickListener {
+                Log.d("FavoriteViewHolder", "Remove button clicked for: $word")
+                onRemoveFavoriteClick(word)
+            }
         }
     }
 }
