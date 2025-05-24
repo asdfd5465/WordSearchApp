@@ -1,11 +1,10 @@
-package com.offlinedictionary.pro // THIS MUST BE THE FIRST NON-COMMENT LINE
+package com.offlinedictionary.pro
 
-// ALL IMPORTS MUST COME IMMEDIATELY AFTER 'package'
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.speech.tts.TextToSpeech // For TextToSpeech.OnInitListener and TextToSpeech class
+import android.speech.tts.TextToSpeech
 import android.text.Editable
 import android.text.TextWatcher
 import android.util.Log
@@ -34,8 +33,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Locale
 
-// THEN THE CLASS DEFINITION
-class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener { // Implement OnInitListener
+class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private lateinit var wordAutoCompleteTextView: MaterialAutoCompleteTextView
     private lateinit var searchButton: Button
@@ -60,11 +58,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener { // Imple
 
     private lateinit var favoritesActivityLauncher: ActivityResultLauncher<Intent>
 
-    private val TAG = "WordSearchAppMainActivity" // Define TAG
-
     companion object {
-        const val EXTRA_SEARCH_WORD = "extra_search_word_from_favorites" // Make key more unique
+        const val EXTRA_SEARCH_WORD = "extra_search_word_from_favorites" // Made more specific
     }
+
+    private val TAG = "WordSearchAppMainActivity"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -73,9 +71,23 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener { // Imple
 
         mainToolbar = findViewById(R.id.mainToolbar)
         setSupportActionBar(mainToolbar)
+        // Remove default title provided by label, we set it via app:title or programmatically if needed
+        supportActionBar?.setDisplayShowTitleEnabled(true) // Ensure title is shown if set in XML
 
-        dbHelper = DatabaseHelper(this) // Initialize dbHelper
-        tts = TextToSpeech(this, this) // Initialize TTS
+        // Make the toolbar title clickable to go to "home" (welcome state)
+        mainToolbar.setOnClickListener {
+            // Check if we are already in the welcome state to avoid unnecessary actions
+            if (welcomeMessageContainer.visibility != View.VISIBLE) {
+                showWelcomeState()
+                wordAutoCompleteTextView.setText("", false) // Clear search input
+                // Optionally, clear focus and hide keyboard
+                hideKeyboardAndClearFocus()
+            }
+        }
+
+
+        dbHelper = DatabaseHelper(this)
+        tts = TextToSpeech(this, this)
 
         wordAutoCompleteTextView = findViewById(R.id.wordEditText)
         searchButton = findViewById(R.id.searchButton)
@@ -126,17 +138,17 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener { // Imple
 
         favoritesActivityLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == Activity.RESULT_OK) {
-                result.data?.getStringExtra(EXTRA_SEARCH_WORD)?.let { wordFromFavorites ->
+                val wordFromFavorites = result.data?.getStringExtra(EXTRA_SEARCH_WORD)
+                if (wordFromFavorites != null) {
+                    Log.d(TAG, "Received word from FavoritesActivity: $wordFromFavorites")
                     wordAutoCompleteTextView.setText(wordFromFavorites, false)
                     performSearch(wordFromFavorites)
-                }
-                if (result.data?.getBooleanExtra(FavoritesActivity.RESULT_FAVORITES_MODIFIED, false) == true) {
+                } else if (result.data?.getBooleanExtra(FavoritesActivity.RESULT_FAVORITES_MODIFIED, false) == true) {
+                    Log.d(TAG, "Favorites list modified, updating current word's favorite icon if visible.")
                     currentSearchedWord?.let {
-                        // Refresh favorite icon status if current word might have been unfavorited from FavoritesActivity
-                         lifecycleScope.launch { // DB operation off main thread
-                            val isFav = withContext(Dispatchers.IO) { dbHelper.isWordFavorite(it) }
-                            updateFavoriteIcon(isFav)
-                        }
+                        // Re-check favorite status from DB as it might have changed
+                        val isFavoriteNow = dbHelper.isWordFavorite(it)
+                        updateFavoriteIcon(isFavoriteNow)
                     }
                 }
             }
@@ -165,49 +177,53 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener { // Imple
         searchedWordContainer.visibility = View.GONE
         resultsScrollView.visibility = View.GONE
         noResultsTextView.visibility = View.GONE
+        Log.d(TAG, "UI State: Welcome")
     }
 
-    private fun showResultsState(searchedWord: String) { // Pass searchedWord
+    private fun showResultsState(searchedWord: String) {
         currentSearchedWord = searchedWord
         welcomeMessageContainer.visibility = View.GONE
         searchedWordContainer.visibility = View.VISIBLE
         searchedWordTextView.text = searchedWord.uppercase(Locale.getDefault())
-         lifecycleScope.launch { // DB operation off main thread
-            val isFav = withContext(Dispatchers.IO) { dbHelper.isWordFavorite(searchedWord) }
-            updateFavoriteIcon(isFav)
+        lifecycleScope.launch { // Fetch favorite status from DB
+            val isFavorite = withContext(Dispatchers.IO) { dbHelper.isWordFavorite(searchedWord) }
+            updateFavoriteIcon(isFavorite)
         }
         currentWordToSpeak = searchedWord
         resultsScrollView.visibility = View.VISIBLE
         noResultsTextView.visibility = View.GONE
+        Log.d(TAG, "UI State: Results for $searchedWord")
     }
 
-    private fun showNoResultsState(searchedWord: String) { // Pass searchedWord
+    private fun showNoResultsState(searchedWord: String) {
         currentSearchedWord = searchedWord
         welcomeMessageContainer.visibility = View.GONE
         searchedWordContainer.visibility = View.VISIBLE
         searchedWordTextView.text = searchedWord.uppercase(Locale.getDefault())
-         lifecycleScope.launch { // DB operation off main thread
-            val isFav = withContext(Dispatchers.IO) { dbHelper.isWordFavorite(searchedWord) }
-            updateFavoriteIcon(isFav)
+        lifecycleScope.launch { // Fetch favorite status from DB
+            val isFavorite = withContext(Dispatchers.IO) { dbHelper.isWordFavorite(searchedWord) }
+            updateFavoriteIcon(isFavorite)
         }
         currentWordToSpeak = searchedWord
         resultsScrollView.visibility = View.GONE
         noResultsTextView.visibility = View.VISIBLE
+        Log.d(TAG, "UI State: No Results for $searchedWord")
     }
     
-    private fun showSearchingState(searchedWord: String) { // Pass searchedWord
+    private fun showSearchingState(searchedWord: String) {
         currentSearchedWord = searchedWord
         welcomeMessageContainer.visibility = View.GONE
         searchedWordContainer.visibility = View.VISIBLE
         searchedWordTextView.text = searchedWord.uppercase(Locale.getDefault())
-         lifecycleScope.launch { // DB operation off main thread
-            val isFav = withContext(Dispatchers.IO) { dbHelper.isWordFavorite(searchedWord) }
-            updateFavoriteIcon(isFav)
+        lifecycleScope.launch { // Fetch favorite status from DB
+            val isFavorite = withContext(Dispatchers.IO) { dbHelper.isWordFavorite(searchedWord) }
+            updateFavoriteIcon(isFavorite)
         }
         currentWordToSpeak = searchedWord
-        resultsScrollView.visibility = View.GONE 
-        noResultsTextView.visibility = View.GONE 
-        definitionsContainer.removeAllViews() 
+        resultsScrollView.visibility = View.GONE
+        noResultsTextView.visibility = View.GONE
+        definitionsContainer.removeAllViews()
+        Log.d(TAG, "UI State: Searching for $searchedWord")
     }
 
     private fun setupAutoComplete() {
@@ -232,6 +248,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener { // Imple
                         Log.d(TAG, "Fetched suggestions for '$query': $suggestions")
                     }
                 } else {
+                    if (query.isEmpty() && definitionsContainer.childCount == 0 && noResultsTextView.visibility == View.GONE) {
+                        // If input is cleared and no results/welcome shown, show welcome
+                        // This condition might need refinement based on desired UX
+                    }
                     suggestionsAdapter.clear()
                     suggestionsAdapter.notifyDataSetChanged()
                 }
@@ -246,10 +266,14 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener { // Imple
 
         if (word.isEmpty()) {
             Toast.makeText(this, getString(R.string.error_no_word), Toast.LENGTH_SHORT).show()
+            // If search is empty and results were shown, revert to welcome state
+            if (resultsScrollView.visibility == View.VISIBLE || noResultsTextView.visibility == View.VISIBLE) {
+                showWelcomeState()
+            }
             return
         }
 
-        showSearchingState(word) // Call with word
+        showSearchingState(word)
 
         lifecycleScope.launch {
             Log.d(TAG, "Coroutine launched for DB query for '$word'")
@@ -261,11 +285,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener { // Imple
             if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
                 if (wordEntryResult != null && wordEntryResult.definitions != null && wordEntryResult.definitions.isNotEmpty()) {
                     displayDefinitions(wordEntryResult.definitions)
-                    showResultsState(word) // Call with word
-                    Log.d(TAG, "Successfully displayed meaning for '$word' from DB")
+                    showResultsState(word)
                 } else {
-                    showNoResultsState(word) // Call with word
-                    Log.d(TAG, "No definition found for '$word' in DB")
+                    showNoResultsState(word)
                 }
                 wordAutoCompleteTextView.setText("", false)
             } else {
@@ -275,7 +297,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener { // Imple
     }
 
     private fun displayDefinitions(definitions: List<DefinitionDetail>) {
-        // definitionsContainer is already cleared
         val inflater = LayoutInflater.from(this)
 
         for (defDetail in definitions) {
@@ -289,7 +310,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener { // Imple
             val antonymsContainer = itemView.findViewById<LinearLayout>(R.id.itemAntonymsContainer)
             val antonymsTV = itemView.findViewById<TextView>(R.id.itemAntonymsTextView)
 
-            partOfSpeechTV.text = defDetail.partOfSpeech?.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() } ?: "N/A"
+            partOfSpeechTV.text = defDetail.partOfSpeech?.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() } ?: "N/A"
             definitionTV.text = defDetail.definition ?: "No definition text."
 
             defDetail.examples?.takeIf { it.isNotEmpty() }?.let { exs ->
@@ -310,8 +331,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener { // Imple
         }
     }
 
-    // --- TextToSpeech Implementation ---
-    override fun onInit(status: Int) { // IMPLEMENTED METHOD
+    override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
             val result = tts?.setLanguage(Locale.US)
             if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
@@ -321,7 +341,12 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener { // Imple
             } else {
                 Log.i(TAG, "TTS Initialization Successful.")
                 ttsReady = true
-                currentWordToSpeak?.let { if(searchedWordContainer.visibility == View.VISIBLE) speakWord(it) }
+                currentWordToSpeak?.let {
+                    if(searchedWordContainer.visibility == View.VISIBLE && it == searchedWordTextView.text.toString().lowercase(Locale.getDefault())) {
+                        // Speak only if the word currently shown is the one we intended to speak
+                       // speakWord(it) // Auto-speak can be annoying, let user click
+                    }
+                }
             }
         } else {
             Log.e(TAG, "TTS Initialization Failed!")
@@ -338,29 +363,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener { // Imple
             Log.e(TAG, "TTS: Not ready or null, cannot speak '$word'")
             if(!ttsReady) Toast.makeText(this, getString(R.string.tts_init_failed), Toast.LENGTH_SHORT).show()
         }
-        currentWordToSpeak = word
     }
 
-    private fun hideKeyboardAndClearFocus() {
-        Log.d(TAG, "Attempting to hide keyboard and clear focus")
-        val inputMethodManager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-        var focusedView = currentFocus
-        if (focusedView == null) {
-            focusedView = window.decorView
-        }
-        focusedView?.let {
-            inputMethodManager.hideSoftInputFromWindow(it.windowToken, 0)
-            it.clearFocus()
-            Log.d(TAG, "Keyboard hidden and focus cleared for view: $it")
-        } ?: run {
-            Log.d(TAG, "No view currently has focus to hide keyboard from or clear.")
-        }
-        if (::wordAutoCompleteTextView.isInitialized && wordAutoCompleteTextView != focusedView) {
-            wordAutoCompleteTextView.clearFocus()
-        }
-    }
-
-    // --- Favorite Logic ---
     private fun toggleFavoriteStatus(word: String) {
         val newFavoriteStatus = !currentWordIsFavorite
         lifecycleScope.launch {
@@ -390,7 +394,25 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener { // Imple
         }
     }
 
-    // Lifecycle methods
+    private fun hideKeyboardAndClearFocus() {
+        Log.d(TAG, "Attempting to hide keyboard and clear focus")
+        val inputMethodManager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        var focusedView = currentFocus
+        if (focusedView == null) {
+            focusedView = window.decorView
+        }
+        focusedView?.let {
+            inputMethodManager.hideSoftInputFromWindow(it.windowToken, 0)
+            it.clearFocus()
+            Log.d(TAG, "Keyboard hidden and focus cleared for view: $it")
+        } ?: run {
+            Log.d(TAG, "No view currently has focus to hide keyboard from or clear.")
+        }
+        if (::wordAutoCompleteTextView.isInitialized && wordAutoCompleteTextView != focusedView) {
+            wordAutoCompleteTextView.clearFocus()
+        }
+    }
+
     override fun onStart() { super.onStart(); Log.d(TAG, "onStart called") }
     override fun onResume() { super.onResume(); Log.d(TAG, "onResume called") }
     override fun onPause() { super.onPause(); Log.d(TAG, "onPause called") }
@@ -401,7 +423,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener { // Imple
             Log.d(TAG, "TTS Shutting down.")
             tts!!.stop()
             tts!!.shutdown()
-            tts = null // Important to nullify after shutdown
+            tts = null // Good practice to nullify
         }
         super.onDestroy()
         Log.d(TAG, "onDestroy called")
