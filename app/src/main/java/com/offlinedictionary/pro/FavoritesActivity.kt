@@ -1,4 +1,3 @@
-// File Path: app/src/main/java/com/offlinedictionary/pro/FavoritesActivity.kt
 package com.offlinedictionary.pro
 
 import android.app.Activity
@@ -13,12 +12,12 @@ import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.lifecycleScope // Changed from GlobalScope
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.appbar.MaterialToolbar
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope // Consider using lifecycleScope or viewModelScope if available
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -30,12 +29,7 @@ class FavoritesActivity : AppCompatActivity() {
     private lateinit var dbHelper: DatabaseHelper
     private val TAG = "FavoritesActivity"
 
-    companion object {
-        // const val REQUEST_CODE_FAVORITES = 1001 // Not needed with ActivityResultLauncher
-        const val RESULT_FAVORITES_MODIFIED_FLAG = "favorites_modified_flag" // Changed key
-    }
-    private var favoritesWereModifiedInThisSession = false
-
+    private var favoritesWereModifiedInThisSession = false // Track if any favorite was removed
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -57,13 +51,12 @@ class FavoritesActivity : AppCompatActivity() {
     private fun setupRecyclerView() {
         favoritesAdapter = FavoritesAdapter(
             onItemClick = { word ->
-                Log.d(TAG, "Favorite item clicked: $word")
+                Log.i(TAG, "Favorite item clicked: '$word'. Sending back to MainActivity.")
                 val resultIntent = Intent()
-                resultIntent.putExtra(MainActivity.EXTRA_SEARCH_WORD_FROM_FAVORITES, word)
-                // Also indicate if favorites were modified, though clicking an item doesn't modify them here
-                // But if a remove action happened before, we want MainActivity to know
+                resultIntent.putExtra(MainActivity.Companion.EXTRA_SEARCH_WORD, word)
+                // Also send back the modification flag if any un-favoriting happened before this click
                 if (favoritesWereModifiedInThisSession) {
-                    resultIntent.putExtra(RESULT_FAVORITES_MODIFIED_FLAG, true)
+                    resultIntent.putExtra(MainActivity.Companion.RESULT_FAVORITES_MODIFIED_FLAG, true)
                 }
                 setResult(Activity.RESULT_OK, resultIntent)
                 finish()
@@ -74,15 +67,14 @@ class FavoritesActivity : AppCompatActivity() {
         )
         favoritesRecyclerView.layoutManager = LinearLayoutManager(this)
         favoritesRecyclerView.adapter = favoritesAdapter
-        val itemDecorator = DividerItemDecoration(this, DividerItemDecoration.VERTICAL)
-        // You might want to customize the decorator's drawable if the default is too prominent
-        // itemDecorator.setDrawable(ContextCompat.getDrawable(this, R.drawable.your_custom_divider)!!)
-        favoritesRecyclerView.addItemDecoration(itemDecorator)
+        val decoration = DividerItemDecoration(this, LinearLayoutManager.VERTICAL)
+        favoritesRecyclerView.addItemDecoration(decoration)
+
     }
 
     private fun loadFavoriteWords() {
         Log.d(TAG, "Loading favorite words...")
-        lifecycleScope.launch { // Use lifecycleScope
+        GlobalScope.launch(Dispatchers.Main) {
             val favWords = withContext(Dispatchers.IO) {
                 dbHelper.getFavoriteWords()
             }
@@ -101,14 +93,14 @@ class FavoritesActivity : AppCompatActivity() {
 
     private fun removeWordFromFavorites(word: String) {
         Log.d(TAG, "Attempting to remove '$word' from favorites.")
-        lifecycleScope.launch { // Use lifecycleScope
+        GlobalScope.launch(Dispatchers.Main) {
             val success = withContext(Dispatchers.IO) {
                 dbHelper.setWordFavoriteStatus(word, false)
             }
             if (success) {
                 Toast.makeText(this@FavoritesActivity, getString(R.string.word_unfavorited_message, word), Toast.LENGTH_SHORT).show()
-                favoritesWereModifiedInThisSession = true
-                loadFavoriteWords()
+                favoritesWereModifiedInThisSession = true // Mark that changes were made
+                loadFavoriteWords() // Refresh the list
             } else {
                 Toast.makeText(this@FavoritesActivity, "Could not remove favorite.", Toast.LENGTH_SHORT).show()
             }
@@ -123,17 +115,32 @@ class FavoritesActivity : AppCompatActivity() {
         return super.onOptionsItemSelected(item)
     }
 
-    @Deprecated("Deprecated in Java")
+    // Overriding finish to ensure RESULT_FAVORITES_MODIFIED is sent if needed on back press
+    @Deprecated("Deprecated in Java") // For super.onBackPressed()
     override fun onBackPressed() {
-        // Ensure we set the result correctly when back is pressed
+        prepareResultAndFinish()
+        // super.onBackPressed() // Let prepareResultAndFinish call finish()
+    }
+    
+    private fun prepareResultAndFinish() {
         if (favoritesWereModifiedInThisSession) {
             val resultIntent = Intent()
-            resultIntent.putExtra(RESULT_FAVORITES_MODIFIED_FLAG, true)
-            setResult(Activity.RESULT_OK, resultIntent)
+            // Check if we are already finishing due to an item click (which would have the word)
+            // If not, it means it's a back press after modification.
+            if (isFinishing && intent?.hasExtra(MainActivity.Companion.EXTRA_SEARCH_WORD) == true) {
+                // Already handled by onItemClick, intent is already set with the word
+                // No need to overwrite it, just let super.finish() proceed with existing result
+            } else {
+                 resultIntent.putExtra(MainActivity.Companion.RESULT_FAVORITES_MODIFIED_FLAG, true)
+                 setResult(Activity.RESULT_OK, resultIntent)
+            }
         } else {
-            setResult(Activity.RESULT_CANCELED)
+            // Only set CANCELED if no word was selected and no modifications were made
+            if (!(isFinishing && intent?.hasExtra(MainActivity.Companion.EXTRA_SEARCH_WORD) == true)) {
+                 setResult(Activity.RESULT_CANCELED)
+            }
         }
-        super.onBackPressed()
+        finish() // Call finish directly now that result is set
     }
 
 
@@ -164,16 +171,22 @@ class FavoritesActivity : AppCompatActivity() {
 
         class FavoriteViewHolder(
             itemView: View,
-            private val onItemClick: (String) -> Unit,
-            private val onRemoveFavoriteClick: (String) -> Unit
+            private val onItemClickLambda: (String) -> Unit,
+            private val onRemoveFavoriteClickLambda: (String) -> Unit
         ) : RecyclerView.ViewHolder(itemView) {
             private val wordTextView: TextView = itemView.findViewById(R.id.favoriteWordTextView)
             private val removeButton: ImageButton = itemView.findViewById(R.id.removeFavoriteButton)
 
             fun bind(word: String) {
                 wordTextView.text = word
-                itemView.setOnClickListener { onItemClick(word) }
-                removeButton.setOnClickListener { onRemoveFavoriteClick(word) }
+                itemView.setOnClickListener {
+                    Log.d("FavoritesAdapter", "Item clicked: $word")
+                    onItemClickLambda(word)
+                }
+                removeButton.setOnClickListener {
+                    Log.d("FavoritesAdapter", "Remove clicked for: $word")
+                    onRemoveFavoriteClickLambda(word)
+                }
             }
         }
     }
