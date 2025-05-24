@@ -1,7 +1,6 @@
-package com.offlinedictionary.pro // Your package name
+package com.offlinedictionary.pro // THIS MUST BE THE FIRST NON-COMMENT LINE
 
-package com.offlinedictionary.pro // Your package name
-
+// ALL IMPORTS MUST COME IMMEDIATELY AFTER 'package'
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
@@ -12,19 +11,18 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageButton
 import android.widget.TextView
-import android.widget.Toast // Add this
+import android.widget.Toast // Ensure this import is present
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.appbar.MaterialToolbar
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope // Or switch to lifecycleScope/viewModelScope
+import kotlinx.coroutines.GlobalScope 
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-// Your class FavoritesActivity : AppCompatActivity() { ... }
-
+// THEN THE CLASS DEFINITION
 class FavoritesActivity : AppCompatActivity() {
 
     private lateinit var favoritesRecyclerView: RecyclerView
@@ -34,11 +32,10 @@ class FavoritesActivity : AppCompatActivity() {
     private val TAG = "FavoritesActivity"
 
     companion object {
-        const val REQUEST_CODE_FAVORITES = 1001
-        const val RESULT_FAVORITES_MODIFIED = "favorites_modified"
+        const val REQUEST_CODE_FAVORITES = 1001 // Used by MainActivity to launch
+        const val RESULT_FAVORITES_MODIFIED = "favorites_modified_result_key" // Key for intent extra
     }
-    private var favoritesModified = false
-
+    private var favoritesWereModifiedDuringThisSession = false // Renamed for clarity
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -46,7 +43,7 @@ class FavoritesActivity : AppCompatActivity() {
 
         val toolbar: MaterialToolbar = findViewById(R.id.favoritesToolbar)
         setSupportActionBar(toolbar)
-        supportActionBar?.setDisplayHomeAsUpEnabled(true) // Show Up button
+        supportActionBar?.setDisplayHomeAsUpEnabled(true)
         supportActionBar?.setDisplayShowHomeEnabled(true)
 
         dbHelper = DatabaseHelper(this)
@@ -60,11 +57,10 @@ class FavoritesActivity : AppCompatActivity() {
     private fun setupRecyclerView() {
         favoritesAdapter = FavoritesAdapter(
             onItemClick = { word ->
-                // When a favorite word is clicked, send it back to MainActivity to display
                 val resultIntent = Intent()
                 resultIntent.putExtra(MainActivity.EXTRA_SEARCH_WORD, word)
                 setResult(Activity.RESULT_OK, resultIntent)
-                finish() // Close FavoritesActivity
+                finish()
             },
             onRemoveFavoriteClick = { word ->
                 removeWordFromFavorites(word)
@@ -77,8 +73,7 @@ class FavoritesActivity : AppCompatActivity() {
 
     private fun loadFavoriteWords() {
         Log.d(TAG, "Loading favorite words...")
-        // Use a coroutine to load from DB off the main thread
-        GlobalScope.launch(Dispatchers.Main) { // For UI updates
+        GlobalScope.launch(Dispatchers.Main) {
             val favWords = withContext(Dispatchers.IO) {
                 dbHelper.getFavoriteWords()
             }
@@ -103,7 +98,7 @@ class FavoritesActivity : AppCompatActivity() {
             }
             if (success) {
                 Toast.makeText(this@FavoritesActivity, getString(R.string.word_unfavorited_message, word), Toast.LENGTH_SHORT).show()
-                favoritesModified = true // Mark that changes were made
+                favoritesWereModifiedDuringThisSession = true // Mark that changes were made
                 loadFavoriteWords() // Refresh the list
             } else {
                 Toast.makeText(this@FavoritesActivity, "Could not remove favorite.", Toast.LENGTH_SHORT).show()
@@ -112,29 +107,27 @@ class FavoritesActivity : AppCompatActivity() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
         if (item.itemId == android.R.id.home) {
-            onBackPressedDispatcher.onBackPressed() // Or finish()
+            onBackPressedDispatcher.onBackPressed() 
             return true
         }
         return super.onOptionsItemSelected(item)
     }
 
+    // Send result back if favorites were modified
     override fun finish() {
-        if (favoritesModified) {
+        if (favoritesWereModifiedDuringThisSession) {
             val resultIntent = Intent()
             resultIntent.putExtra(RESULT_FAVORITES_MODIFIED, true)
-            setResult(Activity.RESULT_OK, resultIntent)
+            setResult(Activity.RESULT_OK, resultIntent) // Indicate success and that data might have changed
         } else {
-            setResult(Activity.RESULT_CANCELED)
+            setResult(Activity.RESULT_CANCELED) // No changes relevant to caller
         }
         super.finish()
     }
 }
 
-// Adapter for the RecyclerView
+// Adapter for the RecyclerView (ensure this is complete as provided before)
 class FavoritesAdapter(
     private val onItemClick: (String) -> Unit,
     private val onRemoveFavoriteClick: (String) -> Unit
@@ -144,7 +137,7 @@ class FavoritesAdapter(
 
     fun submitList(newWords: List<String>) {
         words = newWords
-        notifyDataSetChanged() // Simple notification, consider DiffUtil for larger lists
+        notifyDataSetChanged()
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): FavoriteViewHolder {
