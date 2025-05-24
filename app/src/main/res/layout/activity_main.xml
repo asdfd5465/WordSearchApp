@@ -19,13 +19,12 @@
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/mainToolbar"
             android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
+            android:layout_height="@dimen/custom_toolbar_height"
             app:title="@string/app_name"
             app:titleTextColor="?attr/colorOnPrimary"
             android:background="?attr/colorPrimary" />
     </com.google.android.material.appbar.AppBarLayout>
 
-    <!-- Content Area constrained below AppBar -->
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="0dp"
         android:layout_height="0dp"
@@ -38,7 +37,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <!-- Block 1: Input Area -->
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/wordInputLayout"
             style="@style/Widget.App.TextInputLayout"
@@ -79,7 +77,6 @@
             app:layout_constraintEnd_toEndOf="parent"
             android:layout_marginStart="8dp"/>
 
-        <!-- Welcome Message / Initial State -->
         <LinearLayout
             android:id="@+id/welcomeMessageContainer"
             android:layout_width="0dp"
@@ -93,7 +90,6 @@
             app:layout_constraintBottom_toTopOf="@+id/footerTextView"
             android:visibility="visible"
             tools:visibility="gone">
-            <!-- Welcome TextViews as before -->
             <TextView
                 android:id="@+id/welcomeTitleTextView"
                 android:layout_width="wrap_content"
@@ -113,7 +109,6 @@
                 android:lineSpacingMultiplier="1.2"/>
         </LinearLayout>
 
-        <!-- Block 2: Searched Word Display -->
         <LinearLayout
             android:id="@+id/searchedWordContainer"
             android:layout_width="0dp"
@@ -150,7 +145,7 @@
             <View
                 android:layout_width="0dp"
                 android:layout_height="0dp"
-                android:layout_weight="1"/> <!-- Spacer -->
+                android:layout_weight="1"/>
 
             <ImageButton
                 android:id="@+id/favoriteButton"
@@ -162,7 +157,6 @@
                 android:padding="6dp"/>
         </LinearLayout>
 
-        <!-- Block 3: Definitions -->
         <ScrollView
             android:id="@+id/resultsScrollView"
             android:layout_width="0dp"
@@ -185,7 +179,6 @@
                 android:orientation="vertical"/>
         </ScrollView>
 
-        <!-- No Results TextView -->
         <TextView
             android:id="@+id/noResultsTextView"
             android:layout_width="0dp"
@@ -201,7 +194,6 @@
             android:layout_marginTop="16dp"
             tools:visibility="visible"/>
 
-        <!-- Footer -->
         <TextView
             android:id="@+id/footerTextView"
             android:layout_width="wrap_content"
@@ -212,6 +204,5 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             android:layout_marginBottom="8dp"/>
-    </androidx.constraintlayout.widget.ConstraintLayout> <!-- This closes the INNER ConstraintLayout -->
-
-</androidx.constraintlayout.widget.ConstraintLayout> <!-- This closes the OUTERMOST ConstraintLayout -->
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>
