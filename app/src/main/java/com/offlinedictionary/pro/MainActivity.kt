@@ -1,6 +1,8 @@
 package com.offlinedictionary.pro // Your package name
 
 // ... other imports ...
+package com.offlinedictionary.pro // Or your current package
+
 import android.app.Activity // For ActivityResultLauncher
 import android.content.Context
 import android.content.Intent
@@ -33,6 +35,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Locale
+
+// Your class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener { ... }
 
 class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
