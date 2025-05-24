@@ -18,7 +18,7 @@
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/favoritesToolbar"
             android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
+            android:layout_height="@dimen/custom_toolbar_height"
             app:title="@string/title_activity_favorites"
             app:titleTextColor="?attr/colorOnPrimary"
             android:background="?attr/colorPrimary" />
