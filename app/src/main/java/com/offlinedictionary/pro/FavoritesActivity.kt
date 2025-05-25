@@ -17,7 +17,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.appbar.MaterialToolbar
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope // Using GlobalScope for simplicity in adapter, consider other scopes
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -30,6 +30,9 @@ class FavoritesActivity : AppCompatActivity() {
     private val TAG = "FavoritesActivity"
 
     private var favoritesWereModifiedInThisSession = false
+    private var resultAlreadySetByItemClick = false // New flag
+
+    // ... (onCreate, other methods remain the same)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -51,13 +54,14 @@ class FavoritesActivity : AppCompatActivity() {
     private fun setupRecyclerView() {
         favoritesAdapter = FavoritesAdapter(
             onItemClick = { word ->
-                Log.i(TAG, "Favorite item clicked: '$word'. Sending back to MainActivity.")
+                Log.i(TAG, "Favorite item clicked: '$word'. Setting result and finishing.")
                 val resultIntent = Intent()
                 resultIntent.putExtra(MainActivity.Companion.EXTRA_SEARCH_WORD, word)
-                if (favoritesWereModifiedInThisSession) { // Also pass modification if it happened before click
+                if (favoritesWereModifiedInThisSession) {
                     resultIntent.putExtra(MainActivity.Companion.RESULT_FAVORITES_MODIFIED_FLAG, true)
                 }
                 setResult(Activity.RESULT_OK, resultIntent)
+                resultAlreadySetByItemClick = true // Mark that result is set
                 finish()
             },
             onRemoveFavoriteClick = { word ->
@@ -70,24 +74,7 @@ class FavoritesActivity : AppCompatActivity() {
         favoritesRecyclerView.addItemDecoration(decoration)
     }
 
-    private fun loadFavoriteWords() {
-        Log.d(TAG, "Loading favorite words...")
-        GlobalScope.launch(Dispatchers.Main) {
-            val favWords = withContext(Dispatchers.IO) {
-                dbHelper.getFavoriteWords()
-            }
-            if (favWords.isEmpty()) {
-                favoritesRecyclerView.visibility = View.GONE
-                emptyFavoritesTextView.visibility = View.VISIBLE
-                Log.d(TAG, "No favorite words found.")
-            } else {
-                favoritesRecyclerView.visibility = View.VISIBLE
-                emptyFavoritesTextView.visibility = View.GONE
-                favoritesAdapter.submitList(favWords)
-                Log.d(TAG, "Displaying ${favWords.size} favorite words.")
-            }
-        }
-    }
+    // ... loadFavoriteWords() and removeWordFromFavorites() remain the same
 
     private fun removeWordFromFavorites(word: String) {
         Log.d(TAG, "Attempting to remove '$word' from favorites.")
@@ -97,50 +84,50 @@ class FavoritesActivity : AppCompatActivity() {
             }
             if (success) {
                 Toast.makeText(this@FavoritesActivity, getString(R.string.word_unfavorited_message, word), Toast.LENGTH_SHORT).show()
-                favoritesWereModifiedInThisSession = true
-                loadFavoriteWords()
+                favoritesWereModifiedInThisSession = true // Mark that changes were made
+                loadFavoriteWords() // Refresh the list
             } else {
                 Toast.makeText(this@FavoritesActivity, "Could not remove favorite.", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
+
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         if (item.itemId == android.R.id.home) {
-            onBackPressedDispatcher.onBackPressed()
+            onBackPressedDispatcher.onBackPressed() // This will call our onBackPressed -> prepareResultAndFinish
             return true
         }
         return super.onOptionsItemSelected(item)
     }
 
-    @Deprecated("This method is deprecated in API level 33 (Tiramisu) and higher. Use OnBackPressedDispatcher directly.")
+    @Deprecated("This method is deprecated in API level 33 (Tiramisu) and higher. Use OnBackPressedDispatcher directly via addCallback in onCreate if you need more complex logic, or let this be for now.")
     override fun onBackPressed() {
-        Log.d(TAG, "Back pressed in FavoritesActivity")
+        Log.d(TAG, "Back pressed in FavoritesActivity, calling prepareResultAndFinish.")
         prepareResultAndFinish()
-        // Note: We don't call super.onBackPressed() here because prepareResultAndFinish() calls super.finish()
+        // super.onBackPressed() should not be called here as prepareResultAndFinish calls super.finish()
     }
 
     private fun prepareResultAndFinish() {
-        Log.d(TAG, "Preparing result. Favorites modified: $favoritesWereModifiedInThisSession")
-        if (favoritesWereModifiedInThisSession) {
-            val resultIntent = Intent()
-            resultIntent.putExtra(MainActivity.Companion.RESULT_FAVORITES_MODIFIED_FLAG, true)
-            setResult(Activity.RESULT_OK, resultIntent)
-            Log.d(TAG, "Set RESULT_OK with modification flag.")
-        } else {
-            // If no modifications, and no item was clicked to set a result, set RESULT_CANCELED
-            // Checking if a result was already set (e.g., by onItemClick)
-            if (resultCode == Activity.RESULT_CANCELED) { // Check current result code if necessary
-                 Log.d(TAG, "Set RESULT_CANCELED as no modifications were made and no item clicked.")
-                 setResult(Activity.RESULT_CANCELED)
+        Log.d(TAG, "Preparing result. Favorites modified: $favoritesWereModifiedInThisSession, Result already set by item click: $resultAlreadySetByItemClick")
+        if (!resultAlreadySetByItemClick) { // Only set result if onItemClick hasn't already
+            if (favoritesWereModifiedInThisSession) {
+                val resultIntent = Intent()
+                resultIntent.putExtra(MainActivity.Companion.RESULT_FAVORITES_MODIFIED_FLAG, true)
+                setResult(Activity.RESULT_OK, resultIntent)
+                Log.d(TAG, "Set RESULT_OK with modification flag because back was pressed after modification.")
             } else {
-                Log.d(TAG, "Result already set (likely by item click), not overriding.")
+                Log.d(TAG, "Set RESULT_CANCELED because back was pressed and no item click/modification.")
+                setResult(Activity.RESULT_CANCELED)
             }
+        } else {
+            Log.d(TAG, "Result was already set by item click, not overriding in prepareResultAndFinish.")
         }
         super.finish() // Call super.finish() to ensure proper activity closing
     }
 
 
+    // Adapter class remains the same
     class FavoritesAdapter(
         private val onItemClick: (String) -> Unit,
         private val onRemoveFavoriteClick: (String) -> Unit
