@@ -17,7 +17,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.appbar.MaterialToolbar
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.GlobalScope 
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -30,9 +30,7 @@ class FavoritesActivity : AppCompatActivity() {
     private val TAG = "FavoritesActivity"
 
     private var favoritesWereModifiedInThisSession = false
-    private var resultAlreadySetByItemClick = false // New flag
-
-    // ... (onCreate, other methods remain the same)
+    private var resultAlreadySetByItemClick = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,7 +46,7 @@ class FavoritesActivity : AppCompatActivity() {
         emptyFavoritesTextView = findViewById(R.id.emptyFavoritesTextView)
 
         setupRecyclerView()
-        loadFavoriteWords()
+        loadFavoriteWords() // Call to load initial words
     }
 
     private fun setupRecyclerView() {
@@ -61,7 +59,7 @@ class FavoritesActivity : AppCompatActivity() {
                     resultIntent.putExtra(MainActivity.Companion.RESULT_FAVORITES_MODIFIED_FLAG, true)
                 }
                 setResult(Activity.RESULT_OK, resultIntent)
-                resultAlreadySetByItemClick = true // Mark that result is set
+                resultAlreadySetByItemClick = true
                 finish()
             },
             onRemoveFavoriteClick = { word ->
@@ -74,7 +72,26 @@ class FavoritesActivity : AppCompatActivity() {
         favoritesRecyclerView.addItemDecoration(decoration)
     }
 
-    // ... loadFavoriteWords() and removeWordFromFavorites() remain the same
+    // ------------- THIS METHOD WAS MISSING OR IN THE WRONG PLACE IN PREVIOUS RESPONSE -------------
+    private fun loadFavoriteWords() {
+        Log.d(TAG, "Loading favorite words...")
+        GlobalScope.launch(Dispatchers.Main) { // For UI updates
+            val favWords = withContext(Dispatchers.IO) {
+                dbHelper.getFavoriteWords()
+            }
+            if (favWords.isEmpty()) {
+                favoritesRecyclerView.visibility = View.GONE
+                emptyFavoritesTextView.visibility = View.VISIBLE
+                Log.d(TAG, "No favorite words found.")
+            } else {
+                favoritesRecyclerView.visibility = View.VISIBLE
+                emptyFavoritesTextView.visibility = View.GONE
+                favoritesAdapter.submitList(favWords)
+                Log.d(TAG, "Displaying ${favWords.size} favorite words.")
+            }
+        }
+    }
+    // -----------------------------------------------------------------------------------------
 
     private fun removeWordFromFavorites(word: String) {
         Log.d(TAG, "Attempting to remove '$word' from favorites.")
@@ -84,7 +101,7 @@ class FavoritesActivity : AppCompatActivity() {
             }
             if (success) {
                 Toast.makeText(this@FavoritesActivity, getString(R.string.word_unfavorited_message, word), Toast.LENGTH_SHORT).show()
-                favoritesWereModifiedInThisSession = true // Mark that changes were made
+                favoritesWereModifiedInThisSession = true
                 loadFavoriteWords() // Refresh the list
             } else {
                 Toast.makeText(this@FavoritesActivity, "Could not remove favorite.", Toast.LENGTH_SHORT).show()
@@ -92,10 +109,9 @@ class FavoritesActivity : AppCompatActivity() {
         }
     }
 
-
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         if (item.itemId == android.R.id.home) {
-            onBackPressedDispatcher.onBackPressed() // This will call our onBackPressed -> prepareResultAndFinish
+            onBackPressedDispatcher.onBackPressed()
             return true
         }
         return super.onOptionsItemSelected(item)
@@ -105,12 +121,11 @@ class FavoritesActivity : AppCompatActivity() {
     override fun onBackPressed() {
         Log.d(TAG, "Back pressed in FavoritesActivity, calling prepareResultAndFinish.")
         prepareResultAndFinish()
-        // super.onBackPressed() should not be called here as prepareResultAndFinish calls super.finish()
     }
 
     private fun prepareResultAndFinish() {
         Log.d(TAG, "Preparing result. Favorites modified: $favoritesWereModifiedInThisSession, Result already set by item click: $resultAlreadySetByItemClick")
-        if (!resultAlreadySetByItemClick) { // Only set result if onItemClick hasn't already
+        if (!resultAlreadySetByItemClick) {
             if (favoritesWereModifiedInThisSession) {
                 val resultIntent = Intent()
                 resultIntent.putExtra(MainActivity.Companion.RESULT_FAVORITES_MODIFIED_FLAG, true)
@@ -123,7 +138,7 @@ class FavoritesActivity : AppCompatActivity() {
         } else {
             Log.d(TAG, "Result was already set by item click, not overriding in prepareResultAndFinish.")
         }
-        super.finish() // Call super.finish() to ensure proper activity closing
+        super.finish()
     }
 
 
