@@ -4,6 +4,8 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.speech.tts.TextToSpeech
 import android.text.Editable
 import android.text.TextWatcher
@@ -21,6 +23,7 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -53,14 +56,16 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private var tts: TextToSpeech? = null
     private var ttsReady = false
     private var currentWordToSpeak: String? = null
-    private var currentSearchedWordForUI: String? = null // Tracks what's displayed
+    private var currentSearchedWordForUI: String? = null
     private var currentWordIsFavorite: Boolean = false
 
     private lateinit var favoritesActivityLauncher: ActivityResultLauncher<Intent>
 
+    private var doubleBackToExitPressedOnce = false
+
     companion object {
-        const val EXTRA_SEARCH_WORD = "extra_search_word_from_favorites" // Key for passing word
-        const val RESULT_FAVORITES_MODIFIED_FLAG = "favorites_modified_flag" // Key for modification flag
+        const val EXTRA_SEARCH_WORD = "extra_search_word_from_favorites"
+        const val RESULT_FAVORITES_MODIFIED_FLAG = "favorites_modified_flag"
     }
 
     private val TAG = "WordSearchAppMainActivity"
@@ -77,7 +82,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         mainToolbar.setOnClickListener {
             if (welcomeMessageContainer.visibility != View.VISIBLE) {
                 showWelcomeState()
-                wordAutoCompleteTextView.setText("", false)
+                // wordAutoCompleteTextView is cleared in showWelcomeState
                 hideKeyboardAndClearFocus()
             }
         }
@@ -138,8 +143,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
                 if (wordFromFavorites != null) {
                     Log.i(TAG, "Received word from FavoritesActivity: '$wordFromFavorites', performing search.")
-                    // Do not clear wordAutoCompleteTextView here, user expects to see the word they clicked
-                    // wordAutoCompleteTextView.setText(wordFromFavorites, false) // Not needed if we don't clear it later in performSearch
+                    wordAutoCompleteTextView.setText(wordFromFavorites, false) // Set the text in search box
                     performSearch(wordFromFavorites)
                 } else if (favoritesModified) {
                     Log.i(TAG, "Favorites list modified, updating current word's favorite icon if visible.")
@@ -156,6 +160,33 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 Log.d(TAG, "ActivityResult: Not RESULT_OK (resultCode = ${result.resultCode})")
             }
         }
+
+        // Setup custom back press handling
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                Log.d(TAG, "Back pressed. Welcome visible: ${welcomeMessageContainer.visibility == View.VISIBLE}")
+                if (resultsScrollView.visibility == View.VISIBLE ||
+                    noResultsTextView.visibility == View.VISIBLE ||
+                    (searchedWordContainer.visibility == View.VISIBLE && welcomeMessageContainer.visibility != View.VISIBLE) ) {
+                    Log.d(TAG, "Back press: Reverting to welcome state.")
+                    showWelcomeState()
+                    // wordAutoCompleteTextView cleared in showWelcomeState
+                    hideKeyboardAndClearFocus()
+                } else {
+                    if (doubleBackToExitPressedOnce) {
+                        Log.d(TAG, "Back press: Second press, exiting.")
+                        finishAffinity()
+                        return
+                    }
+                    doubleBackToExitPressedOnce = true
+                    Toast.makeText(this@MainActivity, "Press BACK again to exit", Toast.LENGTH_SHORT).show()
+                    Log.d(TAG, "Back press: First press, showing exit toast.")
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        doubleBackToExitPressedOnce = false
+                    }, 2000)
+                }
+            }
+        })
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -176,46 +207,52 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private fun showWelcomeState() {
         currentSearchedWordForUI = null
+        if(::wordAutoCompleteTextView.isInitialized) { // Check if initialized before accessing
+            wordAutoCompleteTextView.setText("", false)
+        }
         welcomeMessageContainer.visibility = View.VISIBLE
         searchedWordContainer.visibility = View.GONE
         resultsScrollView.visibility = View.GONE
+        definitionsContainer.removeAllViews()
         noResultsTextView.visibility = View.GONE
         Log.d(TAG, "UI State: Welcome")
     }
 
     private fun updateUiForNewWordSearch(searchedWord: String) {
-        currentSearchedWordForUI = searchedWord // Update the word being displayed
+        currentSearchedWordForUI = searchedWord
         searchedWordTextView.text = searchedWord.uppercase(Locale.getDefault())
-        currentWordToSpeak = searchedWord // For TTS
+        currentWordToSpeak = searchedWord
         lifecycleScope.launch {
             val isFavorite = withContext(Dispatchers.IO) { dbHelper.isWordFavorite(searchedWord) }
             updateFavoriteIcon(isFavorite)
         }
     }
 
-    private fun showResultsState() {
+    private fun showResultsState() { // Parameter 'searchedWord' removed, uses currentSearchedWordForUI
         welcomeMessageContainer.visibility = View.GONE
         searchedWordContainer.visibility = View.VISIBLE
+        // searchedWordTextView and favoriteIcon updated by updateUiForNewWordSearch (called in showSearchingState)
         resultsScrollView.visibility = View.VISIBLE
         noResultsTextView.visibility = View.GONE
         Log.d(TAG, "UI State: Results shown for $currentSearchedWordForUI")
     }
 
-    private fun showNoResultsState() {
+    private fun showNoResultsState() { // Parameter 'searchedWord' removed
         welcomeMessageContainer.visibility = View.GONE
-        searchedWordContainer.visibility = View.VISIBLE // Still show the searched word
+        searchedWordContainer.visibility = View.VISIBLE
+        // searchedWordTextView and favoriteIcon updated by updateUiForNewWordSearch (called in showSearchingState)
         resultsScrollView.visibility = View.GONE
         noResultsTextView.visibility = View.VISIBLE
         Log.d(TAG, "UI State: No Results for $currentSearchedWordForUI")
     }
-    
+
     private fun showSearchingState(wordBeingSearched: String) {
-        updateUiForNewWordSearch(wordBeingSearched) // This sets currentSearchedWordForUI & updates icon
+        updateUiForNewWordSearch(wordBeingSearched)
         welcomeMessageContainer.visibility = View.GONE
         searchedWordContainer.visibility = View.VISIBLE
-        resultsScrollView.visibility = View.GONE // Hide old results
+        resultsScrollView.visibility = View.GONE
         noResultsTextView.visibility = View.GONE
-        definitionsContainer.removeAllViews() // Clear previous definitions
+        definitionsContainer.removeAllViews()
         Log.d(TAG, "UI State: Searching for $wordBeingSearched")
     }
 
@@ -250,13 +287,13 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
         if (word.isEmpty()) {
             Toast.makeText(this, getString(R.string.error_no_word), Toast.LENGTH_SHORT).show()
-            if (searchedWordContainer.visibility == View.VISIBLE) { // If results were shown
-                showWelcomeState() // Revert to welcome if search is cleared
+            if (searchedWordContainer.visibility == View.VISIBLE) {
+                showWelcomeState()
             }
             return
         }
 
-        showSearchingState(word) // Updates UI for the new search
+        showSearchingState(word)
 
         lifecycleScope.launch {
             Log.d(TAG, "performSearch: Coroutine launched for DB query for '$word'")
@@ -268,11 +305,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
                 if (wordEntryResult != null && wordEntryResult.definitions != null && wordEntryResult.definitions.isNotEmpty()) {
                     displayDefinitions(wordEntryResult.definitions)
-                    showResultsState() // Call after definitions are ready
+                    showResultsState()
                 } else {
-                    showNoResultsState() // Call if no results
+                    showNoResultsState()
                 }
-                // wordAutoCompleteTextView.setText("", false) // Decide if you want to clear input after search
+                // Removed wordAutoCompleteTextView.setText("", false) to keep searched word visible
             } else {
                 Log.w(TAG, "performSearch: Not updating UI, activity no longer started. Word: '$word'")
             }
@@ -280,11 +317,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     }
 
     private fun displayDefinitions(definitions: List<DefinitionDetail>) {
-        // definitionsContainer is already cleared in showSearchingState
         val inflater = LayoutInflater.from(this)
         for (defDetail in definitions) {
             val itemView = inflater.inflate(R.layout.item_definition, definitionsContainer, false)
-            // ... (population logic as before)
             val partOfSpeechTV = itemView.findViewById<TextView>(R.id.itemPartOfSpeechTextView)
             val definitionTV = itemView.findViewById<TextView>(R.id.itemDefinitionTextView)
             val examplesContainer = itemView.findViewById<LinearLayout>(R.id.itemExamplesContainer)
@@ -340,7 +375,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             Log.i(TAG, "TTS: Speaking '$word'")
         } else {
             Log.e(TAG, "TTS: Not ready or null, cannot speak '$word'")
-            if(!ttsReady) Toast.makeText(this, getString(R.string.tts_init_failed), Toast.LENGTH_SHORT).show()
+            if (!ttsReady) Toast.makeText(this, getString(R.string.tts_init_failed), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -354,7 +389,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 currentWordIsFavorite = newFavoriteStatus
                 updateFavoriteIcon(newFavoriteStatus)
                 val message = if (newFavoriteStatus) getString(R.string.word_favorited_message, word)
-                              else getString(R.string.word_unfavorited_message, word)
+                else getString(R.string.word_unfavorited_message, word)
                 Toast.makeText(this@MainActivity, message, Toast.LENGTH_SHORT).show()
             } else {
                 Toast.makeText(this@MainActivity, "Failed to update favorite.", Toast.LENGTH_SHORT).show()
@@ -378,11 +413,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         val inputMethodManager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
         val focusedView = currentFocus ?: window.decorView
         inputMethodManager.hideSoftInputFromWindow(focusedView.windowToken, 0)
-        focusedView.clearFocus() // Clear focus from the view that had it (or decor view)
-        Log.d(TAG, "Keyboard hidden and focus possibly cleared.")
-        // Specifically clear focus from wordAutoCompleteTextView if it's initialized
+        // focusedView.clearFocus() // This might cause issues if called too aggressively.
+                                  // AutoCompleteTextView might lose focus naturally.
+        Log.d(TAG, "Keyboard hidden.")
         if (::wordAutoCompleteTextView.isInitialized) {
-            wordAutoCompleteTextView.clearFocus()
+             wordAutoCompleteTextView.clearFocus() // Specifically clear focus from our input
         }
     }
 
@@ -395,10 +430,4 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         if (tts != null) {
             Log.d(TAG, "TTS Shutting down.")
             tts!!.stop()
-            tts!!.shutdown()
-            tts = null
-        }
-        super.onDestroy()
-        Log.d(TAG, "onDestroy called")
-    }
-}
+            tts!!.
